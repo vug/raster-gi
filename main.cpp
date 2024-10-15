@@ -1,8 +1,25 @@
+/*
+* TODO(vug): Fatal function that prints error message and ExitProcess
+* TODO(vug): New opengl.hpp file with OpenGL types. put in gl namespace.
+* TODO(vug): Either remove the double window/context creation path for modern pixel buffer choice or make it optional
+* TODO(vug): Better function pointer naming scheme than PFNGLCLEARCOLORPROC
+*/
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
-#include <gl/GL.h>
+//#include <gl/GL.h>
+typedef unsigned int GLenum;
+typedef float GLfloat;
+typedef unsigned int GLbitfield;
+typedef unsigned char GLubyte;
+typedef unsigned int GLuint;
+#define GL_TRUE 1
+#define GL_FALSE 0
+#define GL_VERSION 0x1F02
+//WINGDIAPI const GLubyte *APIENTRY glGetString(GLenum name);
+#define GL_COLOR_BUFFER_BIT 0x00004000
 
 #include <print>
+
 using PFNWGLCREATECONTEXTATTRIBSARBPROC =
     HGLRC(APIENTRY *)(HDC hDC, HGLRC hShareContext, const int *attribList);
 PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribsARB{};
@@ -93,6 +110,19 @@ void loadWglCreateContextAttribsARB() {
   DestroyWindow(dummyWindowHandle);
 }
 
+// Functions belonging to OpenGL v1.1 or less cannot be loaded via wglGetProcAddress
+// we'll get them directly from opengl32.dll that comes with Windows
+void *GetAnyGLFuncAddress(const char *name) {
+  void *p = (void *)wglGetProcAddress(name);
+  if (p == 0 || (p == (void *)0x1) || (p == (void *)0x2) ||
+      (p == (void *)0x3) || (p == (void *)-1)) {
+    HMODULE module = LoadLibraryA("opengl32.dll");
+    p = (void *)GetProcAddress(module, name);
+  }
+
+  return p;
+}
+
 // OpenGL function pointers
 // APIENTRY is WINAPI which is __stdcall
 
@@ -101,22 +131,21 @@ void loadWglCreateContextAttribsARB() {
   funcPtrType method{};
 
 #define GET_PROC_ADDRESS(method, funcPtrType)                         \
-  method = (funcPtrType)wglGetProcAddress(#method);                   \
+  method = (funcPtrType)GetAnyGLFuncAddress(#method);                   \
   if (!method) {                                                      \
     std::println("Failed to initialize OpenGL function {}", #method); \
   }
 
 // struct GlLib {
-// MAKE_FUNC_PTR_TYPE(glClearColor, PFNGLCLEARCOLORPROC, void, GLfloat, GLfloat,
-// GLfloat, GLfloat);
-// MAKE_FUNC_PTR_TYPE(glClear, PFNGLCLEARPROC, void);
+MAKE_FUNC_PTR_TYPE(glClearColor, PFNGLCLEARCOLORPROC, void, GLfloat, GLfloat, GLfloat, GLfloat);
+MAKE_FUNC_PTR_TYPE(glClear, PFNGLCLEARPROC, void, GLbitfield);
 MAKE_FUNC_PTR_TYPE(glCreateProgram, PFNGLCREATEPROGRAMPROC, GLuint);
 // MAKE_FUNC_PTR_TYPE(glViewport, PFNGLVIEWPORTPROC, void, GLint, GLint,
 // GLsizei, GLsizei);
 
 void initFunctions() {
-  // GET_PROC_ADDRESS(glClearColor, PFNGLCLEARCOLORPROC);
-  // GET_PROC_ADDRESS(glClear, PFNGLCLEARPROC);
+  GET_PROC_ADDRESS(glClearColor, PFNGLCLEARCOLORPROC);
+  GET_PROC_ADDRESS(glClear, PFNGLCLEARPROC);
   GET_PROC_ADDRESS(glCreateProgram, PFNGLCREATEPROGRAMPROC);
   // GET_PROC_ADDRESS(glViewport, PFNGLVIEWPORTPROC);
 }
@@ -196,7 +225,7 @@ int main() {
   // gl.initFunctions();
   initFunctions();
 
-  std::println("OpenGL version: {}", (char *)glGetString(GL_VERSION));
+  //std::println("OpenGL version: {}", (char *)glGetString(GL_VERSION));
 
   GLuint p1 = glCreateProgram();
   GLuint p2 = glCreateProgram();
