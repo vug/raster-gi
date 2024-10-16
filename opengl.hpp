@@ -4,8 +4,8 @@
 #include <Windows.h>
 
 void fatal(const char *msg);
-void createWindow(const char *name, int with, int height, HWND &outWindowHandle,
-                  HDC& deviceContextHandle);
+void createAndShowWindow(const char *name, int with, int height,
+                  HDC &deviceContextHandle);
 void setPixelFormatFancy(HDC deviceContextHandle);
 void createAndMakeOpenGlContext(HDC deviceContextHandle);
 
@@ -68,4 +68,4 @@ DECLARE_FUNC_PTR_TYPE(glClearColor, void, GLfloat, GLfloat, GLfloat, GLfloat);
 DECLARE_FUNC_PTR_TYPE(glClear, void, GLbitfield);
 DECLARE_FUNC_PTR_TYPE(glCreateProgram, GLuint);
 
-void initFunctions();
+void initGlFunctions();

@@ -8,9 +8,9 @@ void fatal(const char *msg) {
   WriteConsoleA(stdErr, msg, static_cast<DWORD>(strlen(msg)), nullptr, nullptr);
 }
 
-void createWindow(const char *name, int with, int height, HWND &outWindowHandle,
+void createAndShowWindow(const char *name, int with, int height,
                   HDC &deviceContextHandle) {
-  outWindowHandle = CreateWindowEx(
+  HWND windowHandle = CreateWindowEx(
       0,                                // Optional window styles
       L"STATIC",                        // Predefined class name (STATIC)
       L"RasterGI",                      // Window title
@@ -21,7 +21,10 @@ void createWindow(const char *name, int with, int height, HWND &outWindowHandle,
       GetModuleHandle(NULL),                    // Instance handle
       NULL                                      // Additional application data
   );
-  deviceContextHandle = GetDC(outWindowHandle);
+  deviceContextHandle = GetDC(windowHandle);
+
+  ShowWindow(windowHandle, SW_SHOW);
+  UpdateWindow(windowHandle);
 }
 
 void setPixelFormatFancy(HDC deviceContextHandle) {
@@ -44,8 +47,7 @@ void setPixelFormatFancy(HDC deviceContextHandle) {
   int pixel_format;
   UINT num_formats;
   wglChoosePixelFormatARB(deviceContextHandle, pixel_format_attribs, 0, 1,
-                          &pixel_format,
-                          &num_formats);
+                          &pixel_format, &num_formats);
   if (!num_formats) {
     fatal("Failed to choose the pixel format.");
   }
@@ -100,7 +102,7 @@ void *GetAnyGLFuncAddress(const char *name) {
   return p;
 }
 
-void initFunctions() {
+void initGlFunctions() {
   GET_PROC_ADDRESS(glClearColor);
   GET_PROC_ADDRESS(glClear);
   GET_PROC_ADDRESS(glCreateProgram);

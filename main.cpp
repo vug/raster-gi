@@ -19,18 +19,13 @@
 
 int main() {
   loadWglCreateContextAttribsARB();
-
-  HWND win;
   HDC dev;
-  createWindow("RasterGI", 1024, 768, win, dev);
+  createAndShowWindow("RasterGI", 1024, 768, dev);
   setPixelFormatFancy(dev);
   createAndMakeOpenGlContext(dev);
   // std::println("OpenGL version: {}", (char *)glGetString(GL_VERSION));
 
-  ShowWindow(win, SW_SHOW);
-  UpdateWindow(win);
-
-  initFunctions();
+  initGlFunctions();
 
   GLuint p1 = glCreateProgram();
   GLuint p2 = glCreateProgram();
