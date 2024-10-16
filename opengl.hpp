@@ -4,6 +4,10 @@
 #include <Windows.h>
 
 void fatal(const char *msg);
+void createWindow(const char *name, int with, int height, HWND &outWindowHandle,
+                  HDC& deviceContextHandle);
+void setPixelFormatFancy(HDC deviceContextHandle);
+void createAndMakeOpenGlContext(HDC deviceContextHandle);
 
 typedef unsigned int GLenum;
 typedef float GLfloat;
