@@ -1,17 +1,18 @@
 /*
-* TODO(vug): Fatal function that prints error message and ExitProcess
-* TODO(vug): New opengl.hpp file with OpenGL types. put in gl namespace.
-* TODO(vug): Either remove the double window/context creation path for modern pixel buffer choice or make it optional
-* TODO(vug): Better function pointer naming scheme than PFNGLCLEARCOLORPROC
-* ref: 
-* https://www.khronos.org/opengl/wiki/Platform_specifics:_Windows
-* https://gist.github.com/nickrolfe/1127313ed1dbf80254b614a721b3ee9c
-* https://www.khronos.org/opengl/wiki/Creating_an_OpenGL_Context_(WGL)
-* https://glad.dav1d.de/
-*/
+ * TODO(vug): New opengl.hpp file with OpenGL types. put in gl namespace.
+ * TODO(vug): Either remove the double window/context creation path for modern
+ * pixel buffer choice or make it optional
+ * TODO(vug): Better function pointer naming scheme than PFNGLCLEARCOLORPROC
+ * ref:
+ * https://www.khronos.org/opengl/wiki/Platform_specifics:_Windows
+ * https://gist.github.com/nickrolfe/1127313ed1dbf80254b614a721b3ee9c
+ * https://www.khronos.org/opengl/wiki/Creating_an_OpenGL_Context_(WGL)
+ * https://glad.dav1d.de/
+ */
+
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
-//#include <gl/GL.h>
+// #include <gl/GL.h>
 typedef unsigned int GLenum;
 typedef float GLfloat;
 typedef unsigned int GLbitfield;
@@ -20,16 +21,25 @@ typedef unsigned int GLuint;
 #define GL_TRUE 1
 #define GL_FALSE 0
 #define GL_VERSION 0x1F02
-//WINGDIAPI const GLubyte *APIENTRY glGetString(GLenum name);
+// WINGDIAPI const GLubyte *APIENTRY glGetString(GLenum name);
 #define GL_COLOR_BUFFER_BIT 0x00004000
 
 #include <print>
+
+void fatal(const char *msg) {
+  HANDLE stdErr = GetStdHandle(STD_ERROR_HANDLE);
+  const char *prefix = "[FATAL] ";
+  WriteConsoleA(stdErr, prefix, static_cast<DWORD>(strlen(prefix)), nullptr, nullptr);
+  WriteConsoleA(stdErr, msg, static_cast<DWORD>(strlen(msg)), nullptr, nullptr);
+}
 
 using PFNWGLCREATECONTEXTATTRIBSARBPROC =
     HGLRC(APIENTRY *)(HDC hDC, HGLRC hShareContext, const int *attribList);
 PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribsARB{};
 
-// See https://www.khronos.org/registry/OpenGL/extensions/ARB/WGL_ARB_create_context.txt for all values
+// See
+// https://www.khronos.org/registry/OpenGL/extensions/ARB/WGL_ARB_create_context.txt
+// for all values
 #define WGL_CONTEXT_MAJOR_VERSION_ARB 0x2091
 #define WGL_CONTEXT_MINOR_VERSION_ARB 0x2092
 #define WGL_CONTEXT_PROFILE_MASK_ARB 0x9126
@@ -40,7 +50,9 @@ using PFNWGLCHOOSEPIXELFORMATARBPROC = bool(APIENTRY *)(
     UINT nMaxFormats, int *piFormats, UINT *nNumFormats);
 PFNWGLCHOOSEPIXELFORMATARBPROC wglChoosePixelFormatARB;
 
-// See https://www.khronos.org/registry/OpenGL/extensions/ARB/WGL_ARB_pixel_format.txt for all values
+// See
+// https://www.khronos.org/registry/OpenGL/extensions/ARB/WGL_ARB_pixel_format.txt
+// for all values
 #define WGL_DRAW_TO_WINDOW_ARB 0x2001
 #define WGL_ACCELERATION_ARB 0x2003
 #define WGL_SUPPORT_OPENGL_ARB 0x2010
@@ -66,8 +78,7 @@ void loadWglCreateContextAttribsARB() {
   );
   HDC dummyDeviceContextHandle = GetDC(dummyWindowHandle);
   if (!dummyDeviceContextHandle) {
-    std::println(stderr, "failed to get a valid device context.");
-    ExitProcess(0);
+    fatal("failed to get a valid device context.");
   }
 
   // clang-format off
@@ -97,16 +108,12 @@ void loadWglCreateContextAttribsARB() {
       (PFNWGLCREATECONTEXTATTRIBSARBPROC)wglGetProcAddress(
           "wglCreateContextAttribsARB");
   if (!wglCreateContextAttribsARB) {
-    std::println(stderr, "Failed to initialize OpenGL function {}",
-                 "wglCreateContextAttribsARB");
-    ExitProcess(0);
+    fatal("Failed to initialize OpenGL function wglCreateContextAttribsARB");
   }
   wglChoosePixelFormatARB = (PFNWGLCHOOSEPIXELFORMATARBPROC)wglGetProcAddress(
       "wglChoosePixelFormatARB");
   if (!wglChoosePixelFormatARB) {
-    std::println(stderr, "Failed to initialize OpenGL function {}",
-                 "wglChoosePixelFormatARB");
-    ExitProcess(0);
+    fatal("Failed to initialize OpenGL function wglChoosePixelFormatARB");
   }
 
   wglMakeCurrent(dummyDeviceContextHandle, 0);
@@ -116,8 +123,9 @@ void loadWglCreateContextAttribsARB() {
 }
 
 // from: https://www.khronos.org/opengl/wiki/Load_OpenGL_Functions
-// Functions belonging to OpenGL v1.1 or less cannot be loaded via wglGetProcAddress
-// we'll get them directly from opengl32.dll that comes with Windows
+// Functions belonging to OpenGL v1.1 or less cannot be loaded via
+// wglGetProcAddress we'll get them directly from opengl32.dll that comes with
+// Windows
 void *GetAnyGLFuncAddress(const char *name) {
   void *p = (void *)wglGetProcAddress(name);
   if (p == 0 || (p == (void *)0x1) || (p == (void *)0x2) ||
@@ -137,13 +145,14 @@ void *GetAnyGLFuncAddress(const char *name) {
   funcPtrType method{};
 
 #define GET_PROC_ADDRESS(method, funcPtrType)                         \
-  method = (funcPtrType)GetAnyGLFuncAddress(#method);                   \
+  method = (funcPtrType)GetAnyGLFuncAddress(#method);                 \
   if (!method) {                                                      \
     std::println("Failed to initialize OpenGL function {}", #method); \
   }
 
 // struct GlLib {
-MAKE_FUNC_PTR_TYPE(glClearColor, PFNGLCLEARCOLORPROC, void, GLfloat, GLfloat, GLfloat, GLfloat);
+MAKE_FUNC_PTR_TYPE(glClearColor, PFNGLCLEARCOLORPROC, void, GLfloat, GLfloat,
+                   GLfloat, GLfloat);
 MAKE_FUNC_PTR_TYPE(glClear, PFNGLCLEARPROC, void, GLbitfield);
 MAKE_FUNC_PTR_TYPE(glCreateProgram, PFNGLCREATEPROGRAMPROC, GLuint);
 // MAKE_FUNC_PTR_TYPE(glViewport, PFNGLVIEWPORTPROC, void, GLint, GLint,
@@ -196,14 +205,12 @@ int main() {
   wglChoosePixelFormatARB(deviceContextHandle, pixel_format_attribs, 0, 1,
                           &pixel_format, &num_formats);
   if (!num_formats) {
-    std::println(stderr, "Failed to choose the OpenGL 3.3 pixel format.");
-    ExitProcess(0);
+    fatal("Failed to choose the pixel format.");
   }
   PIXELFORMATDESCRIPTOR pfd;
   DescribePixelFormat(deviceContextHandle, pixel_format, sizeof(pfd), &pfd);
   if (!SetPixelFormat(deviceContextHandle, pixel_format, &pfd)) {
-    std::println(stderr, "Failed to set the OpenGL 3.3 pixel format.");
-    ExitProcess(0);
+    fatal("Failed to set the pixel format.");
   }
 
   // Load OpenGL 4.6 context attributes
@@ -220,9 +227,7 @@ int main() {
   HGLRC modernContext =
       wglCreateContextAttribsARB(deviceContextHandle, nullptr, attribs);
   if (!wglMakeCurrent(deviceContextHandle, modernContext)) {
-    std::println(stderr, "Failed to change OpenGL context to version {}",
-                 "core 4.6");
-    ExitProcess(0);
+    fatal("Failed to change OpenGL context to version 'Core 4.6'");
   }
 
   ShowWindow(windowHandle, SW_SHOW);
@@ -231,7 +236,7 @@ int main() {
   // gl.initFunctions();
   initFunctions();
 
-  //std::println("OpenGL version: {}", (char *)glGetString(GL_VERSION));
+  // std::println("OpenGL version: {}", (char *)glGetString(GL_VERSION));
 
   GLuint p1 = glCreateProgram();
   GLuint p2 = glCreateProgram();
@@ -243,6 +248,4 @@ int main() {
 
     SwapBuffers(deviceContextHandle);
   }
-
-  ExitProcess(0);
 }
