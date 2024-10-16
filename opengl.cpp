@@ -9,7 +9,7 @@ void fatal(const char *msg) {
 }
 
 void createAndShowWindow(const char *name, int with, int height,
-                  HDC &deviceContextHandle) {
+                         HDC &deviceContextHandle) {
   HWND windowHandle = CreateWindowEx(
       0,                                // Optional window styles
       L"STATIC",                        // Predefined class name (STATIC)
@@ -149,17 +149,8 @@ void loadWglCreateContextAttribsARB() {
   HGLRC dummyGlContext = wglCreateContext(dummyDeviceContextHandle);
   wglMakeCurrent(dummyDeviceContextHandle, dummyGlContext);
 
-  wglCreateContextAttribsARB =
-      (FnPtrT(wglCreateContextAttribsARB))wglGetProcAddress(
-          "wglCreateContextAttribsARB");
-  if (!wglCreateContextAttribsARB) {
-    fatal("Failed to initialize OpenGL function wglCreateContextAttribsARB");
-  }
-  wglChoosePixelFormatARB = (FnPtrT(wglChoosePixelFormatARB))wglGetProcAddress(
-      "wglChoosePixelFormatARB");
-  if (!wglChoosePixelFormatARB) {
-    fatal("Failed to initialize OpenGL function wglChoosePixelFormatARB");
-  }
+  GET_PROC_ADDRESS(wglCreateContextAttribsARB);
+  GET_PROC_ADDRESS(wglChoosePixelFormatARB);
 
   wglMakeCurrent(dummyDeviceContextHandle, 0);
   wglDeleteContext(dummyGlContext);

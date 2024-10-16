@@ -5,7 +5,7 @@
 
 void fatal(const char *msg);
 void createAndShowWindow(const char *name, int with, int height,
-                  HDC &deviceContextHandle);
+                         HDC &deviceContextHandle);
 void setPixelFormatFancy(HDC deviceContextHandle);
 void createAndMakeOpenGlContext(HDC deviceContextHandle);
 
