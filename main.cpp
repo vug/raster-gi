@@ -1,7 +1,10 @@
 /*
+ * TODO(vug): bring glGetString and print OpenGL version
+ * TODO(vug): animate clear color
  * TODO(vug): Either remove the double window/context creation path for modern
  * pixel buffer choice or make it optional -> Old and Modern versions of pixel
  * and context functions.
+ * TODO(vug): vertex colored triangle example
  * TODO(vug): try not using CRT and produce small executable
  * ref:
  * https://www.khronos.org/opengl/wiki/Platform_specifics:_Windows
