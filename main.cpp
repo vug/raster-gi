@@ -1,6 +1,5 @@
 /*
  * Original idea: https://iquilezles.org/articles/simplegi/
- * TODO(vug): vertex colored triangle example
  * TODO(vug): Either remove the double window/context creation path for modern
  * pixel buffer choice or make it optional -> Old and Modern versions of pixel
  * and context functions.
@@ -34,18 +33,43 @@ static inline float getTime() {
 int main() {
   loadWglCreateContextAttribsARB();
   HDC dev;
-  createAndShowWindow("RasterGI", 1024, 768, dev);
+  createAndShowWindow("RasterGI", 1024, 1024, dev);
   setPixelFormatFancy(dev);
   createAndMakeOpenGlContext(dev);
 
   initGlFunctions();
-  std::println("OpenGL version: {}", (char *)glGetString(GL_VERSION));
+  std::println("OpenGL version: {}", (char*)glGetString(GL_VERSION));
 
-  compileShader("", "");
+  const char* vertSrc = R"glsl(
+#version 460
 
-  GLuint p1 = glCreateProgram();
-  GLuint p2 = glCreateProgram();
-  std::println("program1 {}, program2 {}", p1, p2);
+out vec3 fragColor;
+
+vec2 positions[3] = vec2[](vec2 (-0.5, -0.5), vec2 (0.5, -0.5), vec2 (0, 0.5));
+vec3 colors[3] = vec3[](vec3 (1.0, 0.0, 0.0), vec3 (0.0, 1.0, 0.0), vec3 (0.0, 0.0, 1.0));
+
+void main ()
+{
+	gl_Position = vec4 (positions[gl_VertexID], 0.0, 1.0);
+	fragColor = colors[gl_VertexID];
+}  
+)glsl";
+
+  const char* fragSrc = R"glsl(
+#version 460
+in vec3 fragColor;
+
+layout (location = 0) out vec4 outColor;
+
+void main () { 
+  outColor = vec4(fragColor, 1.0); 
+}
+)glsl";
+  GLuint prog = compileShader(vertSrc, fragSrc);
+  glUseProgram(prog);
+
+  uint32_t vao;
+  glGenVertexArrays(1, &vao);
 
   float t0 = getTime();
   while (!GetAsyncKeyState(VK_ESCAPE)) {
@@ -55,6 +79,9 @@ int main() {
     glClearColor(fmod(t, 1.f), 1.f - fmod(t * 2.f + .5f, 1.f),
                  fmod(t * 0.33f + 0.33f, 1.f), 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
+
+    glBindVertexArray(vao);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
 
     SwapBuffers(dev);
   }

@@ -26,6 +26,7 @@ typedef float GLfloat;
 #define GL_FRAGMENT_SHADER 0x8B30
 #define GL_COMPILE_STATUS 0x8B81
 #define GL_LINK_STATUS 0x8B82
+#define GL_TRIANGLES 0x0004
 
 // Creates symbol for function pointer type of given method name
 #define FnPtrT(method) FnPtr_##method##_Proc
@@ -90,7 +91,12 @@ DECLARE_FUNC_PTR_TYPE(glGetShaderInfoLog, void, GLuint shader, GLsizei bufSize,
                       GLsizei *length, GLchar *infoLog);
 DECLARE_FUNC_PTR_TYPE(glGetProgramInfoLog, void, GLuint shader, GLsizei bufSize,
                       GLsizei *length, GLchar *infoLog);
+DECLARE_FUNC_PTR_TYPE(glGenVertexArrays, void, GLsizei n, GLuint *arrays);
+DECLARE_FUNC_PTR_TYPE(glUseProgram, void, GLuint program);
+DECLARE_FUNC_PTR_TYPE(glBindVertexArray, void, GLuint array);
+DECLARE_FUNC_PTR_TYPE(glDrawArrays, void, GLenum mode, GLint first,
+                      GLsizei count);
 
 void initGlFunctions();
 
-void compileShader(const char *vertexSrc, const char *fragSrc);
+GLuint compileShader(const char *vertexSrc, const char *fragSrc);

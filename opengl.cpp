@@ -16,11 +16,11 @@ void createAndShowWindow(const char *name, int with, int height,
       L"STATIC",                        // Predefined class name (STATIC)
       L"RasterGI",                      // Window title
       WS_OVERLAPPEDWINDOW | SS_CENTER,  // Window style with centering text
-      CW_USEDEFAULT, CW_USEDEFAULT, 1024, 768,  // Size and position
-      NULL,                                     // Parent window
-      NULL,                                     // Menu
-      GetModuleHandle(NULL),                    // Instance handle
-      NULL                                      // Additional application data
+      CW_USEDEFAULT, CW_USEDEFAULT, with, height,  // Size and position
+      NULL,                                        // Parent window
+      NULL,                                        // Menu
+      GetModuleHandle(NULL),                       // Instance handle
+      NULL  // Additional application data
   );
   deviceContextHandle = GetDC(windowHandle);
 
@@ -102,6 +102,10 @@ DEFINE_FUNC_PTR_TYPE(glLinkProgram);
 DEFINE_FUNC_PTR_TYPE(glGetProgramiv);
 DEFINE_FUNC_PTR_TYPE(glGetShaderInfoLog);
 DEFINE_FUNC_PTR_TYPE(glGetProgramInfoLog);
+DEFINE_FUNC_PTR_TYPE(glGenVertexArrays);
+DEFINE_FUNC_PTR_TYPE(glUseProgram);
+DEFINE_FUNC_PTR_TYPE(glBindVertexArray);
+DEFINE_FUNC_PTR_TYPE(glDrawArrays);
 
 void *GetAnyGLFuncAddress(const char *name) {
   void *p = (void *)wglGetProcAddress(name);
@@ -128,6 +132,10 @@ void initGlFunctions() {
   GET_PROC_ADDRESS(glGetProgramiv);
   GET_PROC_ADDRESS(glGetShaderInfoLog);
   GET_PROC_ADDRESS(glGetProgramInfoLog);
+  GET_PROC_ADDRESS(glGenVertexArrays);
+  GET_PROC_ADDRESS(glUseProgram);
+  GET_PROC_ADDRESS(glBindVertexArray);
+  GET_PROC_ADDRESS(glDrawArrays);
   // GET_PROC_ADDRESS(glViewport, PFNGLVIEWPORTPROC);
 }
 
@@ -180,10 +188,10 @@ void loadWglCreateContextAttribsARB() {
   DestroyWindow(dummyWindowHandle);
 }
 
-void compileShader(const char *vertSrc, const char *fragSrc) {
+GLuint compileShader(const char *vertSrc, const char *fragSrc) {
   GLint success{};
 
-  unsigned int vert = glCreateShader(GL_VERTEX_SHADER);
+  GLuint vert = glCreateShader(GL_VERTEX_SHADER);
   glShaderSource(vert, 1, &vertSrc, nullptr);
   glCompileShader(vert);
   glGetShaderiv(vert, GL_COMPILE_STATUS, &success);
@@ -193,7 +201,7 @@ void compileShader(const char *vertSrc, const char *fragSrc) {
     fatal(message);
   }
 
-  unsigned int frag = glCreateShader(GL_FRAGMENT_SHADER);
+  GLuint frag = glCreateShader(GL_FRAGMENT_SHADER);
   glShaderSource(frag, 1, &fragSrc, nullptr);
   glCompileShader(frag);
   glGetShaderiv(frag, GL_COMPILE_STATUS, &success);
@@ -214,4 +222,6 @@ void compileShader(const char *vertSrc, const char *fragSrc) {
     glGetProgramInfoLog(prog, 1024, nullptr, msg);
     fatal(msg);
   }
+
+  return prog;
 }
