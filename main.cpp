@@ -1,4 +1,5 @@
 /*
+ * Original idea: https://iquilezles.org/articles/simplegi/
  * TODO(vug): vertex colored triangle example
  * TODO(vug): Either remove the double window/context creation path for modern
  * pixel buffer choice or make it optional -> Old and Modern versions of pixel
@@ -39,6 +40,8 @@ int main() {
 
   initGlFunctions();
   std::println("OpenGL version: {}", (char *)glGetString(GL_VERSION));
+
+  compileShader("", "");
 
   GLuint p1 = glCreateProgram();
   GLuint p2 = glCreateProgram();

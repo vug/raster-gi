@@ -9,16 +9,23 @@ void createAndShowWindow(const char *name, int with, int height,
 void setPixelFormatFancy(HDC deviceContextHandle);
 void createAndMakeOpenGlContext(HDC deviceContextHandle);
 
+typedef char GLchar;
+typedef unsigned char GLubyte;
+typedef int GLint;
+typedef int GLsizei;
+typedef unsigned int GLbitfield;
+typedef unsigned int GLuint;
 typedef unsigned int GLenum;
 typedef float GLfloat;
-typedef unsigned int GLbitfield;
-typedef unsigned char GLubyte;
-typedef unsigned int GLuint;
 #define GL_TRUE 1
 #define GL_FALSE 0
 #define GL_VERSION 0x1F02
 // WINGDIAPI const GLubyte *APIENTRY glGetString(GLenum name);
 #define GL_COLOR_BUFFER_BIT 0x00004000
+#define GL_VERTEX_SHADER 0x8B31
+#define GL_FRAGMENT_SHADER 0x8B30
+#define GL_COMPILE_STATUS 0x8B81
+#define GL_LINK_STATUS 0x8B82
 
 // Creates symbol for function pointer type of given method name
 #define FnPtrT(method) FnPtr_##method##_Proc
@@ -64,9 +71,26 @@ void *GetAnyGLFuncAddress(const char *name);
   using FnPtrT(method) = returnType(APIENTRY *)(__VA_ARGS__); \
   extern FnPtrT(method) method;
 
-DECLARE_FUNC_PTR_TYPE(glClearColor, void, GLfloat, GLfloat, GLfloat, GLfloat);
-DECLARE_FUNC_PTR_TYPE(glClear, void, GLbitfield);
+DECLARE_FUNC_PTR_TYPE(glClearColor, void, GLfloat red, GLfloat green,
+                      GLfloat blue, GLfloat alpha);
+DECLARE_FUNC_PTR_TYPE(glClear, void, GLbitfield mask);
+DECLARE_FUNC_PTR_TYPE(glGetString, const GLubyte *, GLenum name);
+DECLARE_FUNC_PTR_TYPE(glCreateShader, GLuint, GLenum type);
+DECLARE_FUNC_PTR_TYPE(glShaderSource, void, GLuint shader, GLsizei count,
+                      const GLchar *const *string, const GLint *length);
+DECLARE_FUNC_PTR_TYPE(glCompileShader, void, GLuint shader);
+DECLARE_FUNC_PTR_TYPE(glGetShaderiv, void, GLuint shader, GLenum pname,
+                      GLint *params);
 DECLARE_FUNC_PTR_TYPE(glCreateProgram, GLuint);
-DECLARE_FUNC_PTR_TYPE(glGetString, const GLubyte *, GLenum);
+DECLARE_FUNC_PTR_TYPE(glAttachShader, void, GLuint program, GLuint shader);
+DECLARE_FUNC_PTR_TYPE(glLinkProgram, void, GLuint program);
+DECLARE_FUNC_PTR_TYPE(glGetProgramiv, void, GLuint program, GLenum pname,
+                      GLint *params);
+DECLARE_FUNC_PTR_TYPE(glGetShaderInfoLog, void, GLuint shader, GLsizei bufSize,
+                      GLsizei *length, GLchar *infoLog);
+DECLARE_FUNC_PTR_TYPE(glGetProgramInfoLog, void, GLuint shader, GLsizei bufSize,
+                      GLsizei *length, GLchar *infoLog);
 
 void initGlFunctions();
+
+void compileShader(const char *vertexSrc, const char *fragSrc);

@@ -6,6 +6,7 @@ void fatal(const char *msg) {
   WriteConsoleA(stdErr, prefix, static_cast<DWORD>(strlen(prefix)), nullptr,
                 nullptr);
   WriteConsoleA(stdErr, msg, static_cast<DWORD>(strlen(msg)), nullptr, nullptr);
+  ExitProcess(0);
 }
 
 void createAndShowWindow(const char *name, int with, int height,
@@ -90,8 +91,17 @@ DEFINE_FUNC_PTR_TYPE(wglChoosePixelFormatARB);
 //
 DEFINE_FUNC_PTR_TYPE(glClearColor);
 DEFINE_FUNC_PTR_TYPE(glClear);
-DEFINE_FUNC_PTR_TYPE(glCreateProgram);
 DEFINE_FUNC_PTR_TYPE(glGetString);
+DEFINE_FUNC_PTR_TYPE(glCreateShader);
+DEFINE_FUNC_PTR_TYPE(glShaderSource);
+DEFINE_FUNC_PTR_TYPE(glCompileShader);
+DEFINE_FUNC_PTR_TYPE(glGetShaderiv);
+DEFINE_FUNC_PTR_TYPE(glCreateProgram);
+DEFINE_FUNC_PTR_TYPE(glAttachShader);
+DEFINE_FUNC_PTR_TYPE(glLinkProgram);
+DEFINE_FUNC_PTR_TYPE(glGetProgramiv);
+DEFINE_FUNC_PTR_TYPE(glGetShaderInfoLog);
+DEFINE_FUNC_PTR_TYPE(glGetProgramInfoLog);
 
 void *GetAnyGLFuncAddress(const char *name) {
   void *p = (void *)wglGetProcAddress(name);
@@ -107,8 +117,17 @@ void *GetAnyGLFuncAddress(const char *name) {
 void initGlFunctions() {
   GET_PROC_ADDRESS(glClearColor);
   GET_PROC_ADDRESS(glClear);
-  GET_PROC_ADDRESS(glCreateProgram);
   GET_PROC_ADDRESS(glGetString);
+  GET_PROC_ADDRESS(glCreateShader);
+  GET_PROC_ADDRESS(glShaderSource);
+  GET_PROC_ADDRESS(glCompileShader);
+  GET_PROC_ADDRESS(glGetShaderiv);
+  GET_PROC_ADDRESS(glCreateProgram);
+  GET_PROC_ADDRESS(glAttachShader);
+  GET_PROC_ADDRESS(glLinkProgram);
+  GET_PROC_ADDRESS(glGetProgramiv);
+  GET_PROC_ADDRESS(glGetShaderInfoLog);
+  GET_PROC_ADDRESS(glGetProgramInfoLog);
   // GET_PROC_ADDRESS(glViewport, PFNGLVIEWPORTPROC);
 }
 
@@ -159,4 +178,40 @@ void loadWglCreateContextAttribsARB() {
   wglDeleteContext(dummyGlContext);
   ReleaseDC(dummyWindowHandle, dummyDeviceContextHandle);
   DestroyWindow(dummyWindowHandle);
+}
+
+void compileShader(const char *vertSrc, const char *fragSrc) {
+  GLint success{};
+
+  unsigned int vert = glCreateShader(GL_VERTEX_SHADER);
+  glShaderSource(vert, 1, &vertSrc, nullptr);
+  glCompileShader(vert);
+  glGetShaderiv(vert, GL_COMPILE_STATUS, &success);
+  if (!success) {
+    GLchar message[1024];
+    glGetShaderInfoLog(vert, 1024, nullptr, message);
+    fatal(message);
+  }
+
+  unsigned int frag = glCreateShader(GL_FRAGMENT_SHADER);
+  glShaderSource(frag, 1, &fragSrc, nullptr);
+  glCompileShader(frag);
+  glGetShaderiv(frag, GL_COMPILE_STATUS, &success);
+  if (!success) {
+    GLchar msg[1024];
+    glGetShaderInfoLog(frag, 1024, nullptr, msg);
+    fatal(msg);
+  }
+
+  GLuint prog = glCreateProgram();
+  glAttachShader(prog, vert);
+  glAttachShader(prog, frag);
+  glLinkProgram(prog);
+
+  glGetProgramiv(prog, GL_LINK_STATUS, &success);
+  if (!success) {
+    GLchar msg[1024];
+    glGetProgramInfoLog(prog, 1024, nullptr, msg);
+    fatal(msg);
+  }
 }
