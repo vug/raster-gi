@@ -27,9 +27,9 @@ int main() {
   createAndShowWindow("RasterGI", 1024, 768, dev);
   setPixelFormatFancy(dev);
   createAndMakeOpenGlContext(dev);
-  // std::println("OpenGL version: {}", (char *)glGetString(GL_VERSION));
 
   initGlFunctions();
+  std::println("OpenGL version: {}", (char *)glGetString(GL_VERSION));
 
   GLuint p1 = glCreateProgram();
   GLuint p2 = glCreateProgram();

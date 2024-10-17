@@ -67,5 +67,6 @@ void *GetAnyGLFuncAddress(const char *name);
 DECLARE_FUNC_PTR_TYPE(glClearColor, void, GLfloat, GLfloat, GLfloat, GLfloat);
 DECLARE_FUNC_PTR_TYPE(glClear, void, GLbitfield);
 DECLARE_FUNC_PTR_TYPE(glCreateProgram, GLuint);
+DECLARE_FUNC_PTR_TYPE(glGetString, const GLubyte *, GLenum);
 
 void initGlFunctions();

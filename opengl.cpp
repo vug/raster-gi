@@ -87,9 +87,11 @@ void createAndMakeOpenGlContext(HDC deviceContextHandle) {
 
 DEFINE_FUNC_PTR_TYPE(wglCreateContextAttribsARB);
 DEFINE_FUNC_PTR_TYPE(wglChoosePixelFormatARB);
+//
 DEFINE_FUNC_PTR_TYPE(glClearColor);
 DEFINE_FUNC_PTR_TYPE(glClear);
 DEFINE_FUNC_PTR_TYPE(glCreateProgram);
+DEFINE_FUNC_PTR_TYPE(glGetString);
 
 void *GetAnyGLFuncAddress(const char *name) {
   void *p = (void *)wglGetProcAddress(name);
@@ -106,6 +108,7 @@ void initGlFunctions() {
   GET_PROC_ADDRESS(glClearColor);
   GET_PROC_ADDRESS(glClear);
   GET_PROC_ADDRESS(glCreateProgram);
+  GET_PROC_ADDRESS(glGetString);
   // GET_PROC_ADDRESS(glViewport, PFNGLVIEWPORTPROC);
 }
 
