@@ -1,10 +1,8 @@
 /*
- * TODO(vug): bring glGetString and print OpenGL version
- * TODO(vug): animate clear color
+ * TODO(vug): vertex colored triangle example
  * TODO(vug): Either remove the double window/context creation path for modern
  * pixel buffer choice or make it optional -> Old and Modern versions of pixel
  * and context functions.
- * TODO(vug): vertex colored triangle example
  * TODO(vug): try not using CRT and produce small executable
  * ref:
  * https://www.khronos.org/opengl/wiki/Platform_specifics:_Windows
@@ -21,6 +19,17 @@
 
 #include <print>
 
+static inline float getTime() {
+  static LARGE_INTEGER freq = []() {
+    LARGE_INTEGER f;
+    QueryPerformanceFrequency(&f);
+    return f;
+  }();
+  LARGE_INTEGER ticks;
+  QueryPerformanceCounter(&ticks);
+  return ticks.QuadPart / static_cast<float>(freq.QuadPart);
+}
+
 int main() {
   loadWglCreateContextAttribsARB();
   HDC dev;
@@ -35,8 +44,13 @@ int main() {
   GLuint p2 = glCreateProgram();
   std::println("program1 {}, program2 {}", p1, p2);
 
+  float t0 = getTime();
   while (!GetAsyncKeyState(VK_ESCAPE)) {
-    glClearColor(1.0f, 0.5f, 0.25f, 1.0f);
+    const float t = getTime() - t0;
+    const float dt = t - t0;
+
+    glClearColor(fmod(t, 1.f), 1.f - fmod(t * 2.f + .5f, 1.f),
+                 fmod(t * 0.33f + 0.33f, 1.f), 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     SwapBuffers(dev);
