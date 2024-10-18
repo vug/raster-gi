@@ -30,6 +30,45 @@ static inline float getTime() {
   return ticks.QuadPart / static_cast<float>(freq.QuadPart);
 }
 
+struct Vec3 {
+  float x;
+  float y;
+  float z;
+};
+
+struct Mesh {
+  unsigned int numVertices{};
+  Vec3* positions{};
+  Vec3* normals{};
+  Vec3* colors{};
+  // ~Mesh() { delete[] positions; delete[] normals; delete[] colors; }
+};
+
+Mesh readMeshFromFile(LPCWSTR fileName) {
+  HANDLE hFile = CreateFile(fileName, GENERIC_READ, 0, NULL, OPEN_EXISTING,
+                            FILE_ATTRIBUTE_NORMAL, NULL);
+  if (hFile == INVALID_HANDLE_VALUE) {
+    fatal("Failed to open file");
+  }
+
+  Mesh mesh;
+  DWORD bytesRead = 0;
+  if (!ReadFile(hFile, &mesh.numVertices, sizeof(int), &bytesRead, NULL) ||
+      bytesRead != sizeof(int)) {
+    fatal("Failed to read numVertices from file.");
+  };
+
+  const size_t attrSizeBytes = mesh.numVertices * sizeof(Vec3);
+  for (Vec3* attr : {mesh.positions, mesh.normals, mesh.colors}) {
+    if (!ReadFile(hFile, attr, attrSizeBytes, &bytesRead, NULL) ||
+        bytesRead != attrSizeBytes) {
+      fatal("Failed to read position data.");
+    }
+  }
+
+  return mesh;
+}
+
 int main() {
   loadWglCreateContextAttribsARB();
   HDC dev;
