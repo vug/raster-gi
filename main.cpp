@@ -38,32 +38,51 @@ struct Vec3 {
 
 struct Mesh {
   unsigned int numVertices{};
+  unsigned int numIndices{};
   Vec3* positions{};
   Vec3* normals{};
   Vec3* colors{};
+  unsigned int* indices{};
   // ~Mesh() { delete[] positions; delete[] normals; delete[] colors; }
 };
 
-Mesh readMeshFromFile(LPCWSTR fileName) {
-  HANDLE hFile = CreateFile(fileName, GENERIC_READ, 0, NULL, OPEN_EXISTING,
-                            FILE_ATTRIBUTE_NORMAL, NULL);
+Mesh readMeshFromFile(const char* fileName) {
+  HANDLE hFile = CreateFileA(fileName, GENERIC_READ, 0, NULL, OPEN_EXISTING,
+                             FILE_ATTRIBUTE_NORMAL, NULL);
   if (hFile == INVALID_HANDLE_VALUE) {
     fatal("Failed to open file");
   }
 
   Mesh mesh;
   DWORD bytesRead = 0;
-  if (!ReadFile(hFile, &mesh.numVertices, sizeof(int), &bytesRead, NULL) ||
-      bytesRead != sizeof(int)) {
+  if (!ReadFile(hFile, &mesh.numVertices, sizeof(unsigned int), &bytesRead,
+                nullptr) ||
+      bytesRead != sizeof(unsigned int)) {
     fatal("Failed to read numVertices from file.");
   };
 
-  const size_t attrSizeBytes = mesh.numVertices * sizeof(Vec3);
+  if (!ReadFile(hFile, &mesh.numIndices, sizeof(unsigned int), &bytesRead,
+                nullptr) ||
+      bytesRead != sizeof(unsigned int)) {
+    fatal("Failed to read numIndices from file.");
+  }
+
+  const DWORD attrSizeBytes = mesh.numVertices * sizeof(Vec3);
+  mesh.positions = new Vec3[mesh.numVertices];
+  mesh.normals = new Vec3[mesh.numVertices];
+  mesh.colors = new Vec3[mesh.numVertices];
   for (Vec3* attr : {mesh.positions, mesh.normals, mesh.colors}) {
     if (!ReadFile(hFile, attr, attrSizeBytes, &bytesRead, NULL) ||
         bytesRead != attrSizeBytes) {
       fatal("Failed to read position data.");
     }
+  }
+
+  const DWORD indicesSizeBytes = mesh.numIndices * sizeof(unsigned int);
+  mesh.indices = new unsigned int[mesh.numIndices];
+  if (!ReadFile(hFile, mesh.indices, indicesSizeBytes, &bytesRead, NULL) ||
+      bytesRead != indicesSizeBytes) {
+    fatal("Failed to read position data.");
   }
 
   return mesh;
@@ -78,6 +97,31 @@ int main() {
 
   initGlFunctions();
   std::println("OpenGL version: {}", (char*)glGetString(GL_VERSION));
+
+  char path[MAX_PATH];
+  GetCurrentDirectoryA(MAX_PATH, path);
+  strcat_s(path, "\\assets\\");
+  strcat_s(path, "suzanne.mesh");
+  Mesh mesh = readMeshFromFile(path);
+  std::println("numVertices {}, numIndices {}", mesh.numVertices,
+               mesh.numIndices);
+  for (unsigned int vertIx = 0; vertIx < 3; vertIx++) {
+    const Vec3& pos = mesh.positions[vertIx];
+    const Vec3& norm = mesh.normals[vertIx];
+    const Vec3& col = mesh.colors[vertIx];
+    std::println(
+        "vert[{}] ({:.3f}, {:.3f}, {:.3f}), ({:.3f}, {:.3f}, {:.3f}), ({:.3f}, "
+        "{:.3f}, {:.3f})",
+        vertIx, pos.x, pos.y, pos.z, norm.x, norm.y, norm.z, col.x, col.y,
+        col.z);
+  }
+  for (unsigned int triIx = 0; triIx < 5; triIx++) {
+    std::print("{} ", triIx);
+    for (unsigned int c = 0; c < 3; c++) {
+      std::print("{} ", mesh.indices[triIx * 3 + c]);
+    }
+    std::println();
+  }
 
   const char* vertSrc = R"glsl(
 #version 460
