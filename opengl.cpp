@@ -110,6 +110,11 @@ DEFINE_FUNC_PTR_TYPE(glCreateBuffers);
 DEFINE_FUNC_PTR_TYPE(glDeleteBuffers);
 DEFINE_FUNC_PTR_TYPE(glBindBuffer);
 DEFINE_FUNC_PTR_TYPE(glBufferData);
+DEFINE_FUNC_PTR_TYPE(glCreateVertexArrays);
+DEFINE_FUNC_PTR_TYPE(glDeleteVertexArrays);
+DEFINE_FUNC_PTR_TYPE(glEnableVertexAttribArray);
+DEFINE_FUNC_PTR_TYPE(glVertexAttribPointer);
+DEFINE_FUNC_PTR_TYPE(glDrawElements);
 
 void *GetAnyGLFuncAddress(const char *name) {
   void *p = (void *)wglGetProcAddress(name);
@@ -144,6 +149,11 @@ void initGlFunctions() {
   GET_PROC_ADDRESS(glDeleteBuffers);
   GET_PROC_ADDRESS(glBindBuffer);
   GET_PROC_ADDRESS(glBufferData);
+  GET_PROC_ADDRESS(glCreateVertexArrays);
+  GET_PROC_ADDRESS(glDeleteVertexArrays);
+  GET_PROC_ADDRESS(glEnableVertexAttribArray);
+  GET_PROC_ADDRESS(glVertexAttribPointer);
+  GET_PROC_ADDRESS(glDrawElements);
   // GET_PROC_ADDRESS(glViewport, PFNGLVIEWPORTPROC);
 }
 

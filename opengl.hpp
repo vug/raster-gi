@@ -19,6 +19,7 @@ typedef unsigned int GLenum;
 typedef float GLfloat;
 typedef signed long long int khronos_ssize_t; // WIN64
 typedef khronos_ssize_t GLsizeiptr;
+typedef unsigned char GLboolean;
 #define GL_TRUE 1
 #define GL_FALSE 0
 #define GL_VERSION 0x1F02
@@ -32,6 +33,8 @@ typedef khronos_ssize_t GLsizeiptr;
 #define GL_ARRAY_BUFFER 0x8892
 #define GL_ELEMENT_ARRAY_BUFFER 0x8893
 #define GL_STATIC_DRAW 0x88E4
+#define GL_FLOAT 0x1406
+#define GL_UNSIGNED_INT 0x1405
 
 // Creates symbol for function pointer type of given method name
 #define FnPtrT(method) FnPtr_##method##_Proc
@@ -105,6 +108,14 @@ DECLARE_FUNC_PTR_TYPE(glCreateBuffers, void, GLsizei n, GLuint *buffers);
 DECLARE_FUNC_PTR_TYPE(glDeleteBuffers, void, GLsizei n, const GLuint *buffers);
 DECLARE_FUNC_PTR_TYPE(glBindBuffer, void, GLenum target, GLuint buffer);
 DECLARE_FUNC_PTR_TYPE(glBufferData, void, GLenum target, GLsizeiptr size, const void *data, GLenum usage);
+DECLARE_FUNC_PTR_TYPE(glCreateVertexArrays, void, GLsizei n, GLuint *arrays); 
+DECLARE_FUNC_PTR_TYPE(glDeleteVertexArrays, void, GLsizei n, const GLuint *arrays);
+DECLARE_FUNC_PTR_TYPE(glEnableVertexAttribArray, void, GLuint index);
+DECLARE_FUNC_PTR_TYPE(glVertexAttribPointer, void, GLuint index, GLint size,
+                      GLenum type, GLboolean normalized, GLsizei stride,
+                      const void *pointer); 
+DECLARE_FUNC_PTR_TYPE(glDrawElements, void, GLenum mode, GLsizei count,
+                      GLenum type, const void *indices);
 
 void initGlFunctions();
 
