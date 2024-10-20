@@ -25,6 +25,7 @@ typedef unsigned char GLboolean;
 #define GL_VERSION 0x1F02
 // WINGDIAPI const GLubyte *APIENTRY glGetString(GLenum name);
 #define GL_COLOR_BUFFER_BIT 0x00004000
+#define GL_DEPTH_BUFFER_BIT 0x00000100
 #define GL_VERTEX_SHADER 0x8B31
 #define GL_FRAGMENT_SHADER 0x8B30
 #define GL_COMPILE_STATUS 0x8B81
@@ -35,6 +36,8 @@ typedef unsigned char GLboolean;
 #define GL_STATIC_DRAW 0x88E4
 #define GL_FLOAT 0x1406
 #define GL_UNSIGNED_INT 0x1405
+#define GL_DEPTH_TEST 0x0B71
+#define GL_LESS 0x0201
 
 // Creates symbol for function pointer type of given method name
 #define FnPtrT(method) FnPtr_##method##_Proc
@@ -116,6 +119,8 @@ DECLARE_FUNC_PTR_TYPE(glVertexAttribPointer, void, GLuint index, GLint size,
                       const void *pointer); 
 DECLARE_FUNC_PTR_TYPE(glDrawElements, void, GLenum mode, GLsizei count,
                       GLenum type, const void *indices);
+DECLARE_FUNC_PTR_TYPE(glEnable, void, GLenum cap);
+DECLARE_FUNC_PTR_TYPE(glDepthFunc, void, GLenum func);
 
 void initGlFunctions();
 

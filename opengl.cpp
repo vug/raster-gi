@@ -115,6 +115,8 @@ DEFINE_FUNC_PTR_TYPE(glDeleteVertexArrays);
 DEFINE_FUNC_PTR_TYPE(glEnableVertexAttribArray);
 DEFINE_FUNC_PTR_TYPE(glVertexAttribPointer);
 DEFINE_FUNC_PTR_TYPE(glDrawElements);
+DEFINE_FUNC_PTR_TYPE(glEnable);
+DEFINE_FUNC_PTR_TYPE(glDepthFunc);
 
 void *GetAnyGLFuncAddress(const char *name) {
   void *p = (void *)wglGetProcAddress(name);
@@ -154,6 +156,8 @@ void initGlFunctions() {
   GET_PROC_ADDRESS(glEnableVertexAttribArray);
   GET_PROC_ADDRESS(glVertexAttribPointer);
   GET_PROC_ADDRESS(glDrawElements);
+  GET_PROC_ADDRESS(glEnable);
+  GET_PROC_ADDRESS(glDepthFunc);
   // GET_PROC_ADDRESS(glViewport, PFNGLVIEWPORTPROC);
 }
 

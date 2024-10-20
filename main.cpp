@@ -190,9 +190,11 @@ void main() {
     const float t = getTime() - t0;
     const float dt = t - t0;
 
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
     glClearColor(fmod(t, 1.f), 1.f - fmod(t * 2.f + .5f, 1.f),
                  fmod(t * 0.33f + 0.33f, 1.f), 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbPosition);
