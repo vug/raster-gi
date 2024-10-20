@@ -106,6 +106,7 @@ int main() {
   Mesh mesh = readMeshFromFile(path);
   std::println("numVertices {}, numIndices {}", mesh.numVertices,
                mesh.numIndices);
+  // TODO(vug): remove debug prints, it works
   for (unsigned int vertIx = 0; vertIx < 3; vertIx++) {
     const Vec3& pos = mesh.positions[vertIx];
     const Vec3& norm = mesh.normals[vertIx];
@@ -142,32 +143,6 @@ int main() {
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh.numIndices * sizeof(unsigned int),
                mesh.indices, GL_STATIC_DRAW);
 
-
-  const char* vertSrc0 = R"glsl(
-#version 460
-
-out vec3 fragColor;
-
-vec2 positions[3] = vec2[](vec2 (-0.5, -0.5), vec2 (0.5, -0.5), vec2 (0, 0.5));
-vec3 colors[3] = vec3[](vec3 (1.0, 0.0, 0.0), vec3 (0.0, 1.0, 0.0), vec3 (0.0, 0.0, 1.0));
-
-void main ()
-{
-	gl_Position = vec4 (positions[gl_VertexID], 0.0, 1.0);
-	fragColor = colors[gl_VertexID];
-}  
-)glsl";
-
-  const char* fragSrc0 = R"glsl(
-#version 460
-in vec3 fragColor;
-
-layout (location = 0) out vec4 outColor;
-
-void main () { 
-  outColor = vec4(fragColor, 1.0); 
-}
-)glsl";
 
   const char* vertSrc = R"glsl(
 #version 460
@@ -231,7 +206,6 @@ void main() {
     glEnableVertexAttribArray(2); // color
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib);
 
-    //glDrawArrays(GL_TRIANGLES, 0, 3);
     glDrawElements(GL_TRIANGLES, mesh.numIndices, GL_UNSIGNED_INT, nullptr);
 
     SwapBuffers(dev);
