@@ -192,8 +192,7 @@ void main() {
 
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
-    glClearColor(fmod(t, 1.f), 1.f - fmod(t * 2.f + .5f, 1.f),
-                 fmod(t * 0.33f + 0.33f, 1.f), 1.0f);
+    glClearColor(0.f, 0.f, 0.f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glBindVertexArray(vao);
