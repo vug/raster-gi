@@ -1,9 +1,5 @@
 /*
  * Original idea: https://iquilezles.org/articles/simplegi/
- * TODO(vug): bring vertex array functions: glCreateVertexArrays,
- * glDeleteVertexArrays, glBindVertexArray, glEnableVertexAttribArray,
- * glVertexAttribIPointer
- * TODO(vug): upload mesh data
  * TODO(vug): lookAt function
  * TODO(vug): Either remove the double window/context creation path for modern
  * pixel buffer choice or make it optional -> Old and Modern versions of pixel
@@ -147,7 +143,7 @@ int main() {
                mesh.indices, GL_STATIC_DRAW);
 
 
-  const char* vertSrc = R"glsl(
+  const char* vertSrc0 = R"glsl(
 #version 460
 
 out vec3 fragColor;
@@ -162,7 +158,7 @@ void main ()
 }  
 )glsl";
 
-  const char* fragSrc = R"glsl(
+  const char* fragSrc0 = R"glsl(
 #version 460
 in vec3 fragColor;
 
@@ -172,11 +168,47 @@ void main () {
   outColor = vec4(fragColor, 1.0); 
 }
 )glsl";
+
+  const char* vertSrc = R"glsl(
+#version 460
+
+layout (location = 0) in vec3 aPosition;  // Position attribute at location 0
+layout (location = 1) in vec3 aNormal;    // Normal attribute at location 1
+layout (location = 2) in vec3 aColor;     // Color attribute at location 2
+
+uniform mat4 uMVPMatrix = mat4(1);  // Model-View-Projection matrix
+
+out vec3 vNormal;  // Pass normal to fragment shader
+out vec3 vColor;   // Pass color to fragment shader
+
+void main() {
+    // Transform the vertex position by the MVP matrix
+    gl_Position = uMVPMatrix * vec4(aPosition, 1.0);
+    
+    // Pass normal and color to the fragment shader
+    vNormal = aNormal;
+    vColor = aColor;
+}
+)glsl";
+
+  const char* fragSrc = R"glsl(
+#version 460
+in vec3 vNormal;  // Interpolated normal from vertex shader
+in vec3 vColor;   // Interpolated color from vertex shader
+
+out vec4 fragColor;  // Output color
+
+void main() {
+    // For now, we'll just output the color passed in
+    fragColor = vec4(vColor, 1.0);
+}
+)glsl";
   GLuint prog = compileShader(vertSrc, fragSrc);
   glUseProgram(prog);
 
   uint32_t vao;
-  glGenVertexArrays(1, &vao);
+  glCreateVertexArrays(1, &vao);
+
 
   float t0 = getTime();
   while (!GetAsyncKeyState(VK_ESCAPE)) {
@@ -188,7 +220,19 @@ void main () {
     glClear(GL_COLOR_BUFFER_BIT);
 
     glBindVertexArray(vao);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glBindBuffer(GL_ARRAY_BUFFER, vbPosition);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+    glEnableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, vbNormal);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, nullptr);  
+    glEnableVertexAttribArray(1);
+    glBindBuffer(GL_ARRAY_BUFFER, vbColor);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+    glEnableVertexAttribArray(2); // color
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib);
+
+    //glDrawArrays(GL_TRIANGLES, 0, 3);
+    glDrawElements(GL_TRIANGLES, mesh.numIndices, GL_UNSIGNED_INT, nullptr);
 
     SwapBuffers(dev);
   }
