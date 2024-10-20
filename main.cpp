@@ -1,6 +1,6 @@
 /*
  * Original idea: https://iquilezles.org/articles/simplegi/
- * TODO(vug): lookAt function
+ * TODO(vug): glGetUniformLocation, glUniformMatrix4fv, glm::lookAt, glm::perspective
  * TODO(vug): Either remove the double window/context creation path for modern
  * pixel buffer choice or make it optional -> Old and Modern versions of pixel
  * and context functions.
