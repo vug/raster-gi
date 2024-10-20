@@ -1,5 +1,10 @@
 /*
  * Original idea: https://iquilezles.org/articles/simplegi/
+ * TODO(vug): bring vertex array functions: glCreateVertexArrays,
+ * glDeleteVertexArrays, glBindVertexArray, glEnableVertexAttribArray,
+ * glVertexAttribIPointer
+ * TODO(vug): upload mesh data
+ * TODO(vug): lookAt function
  * TODO(vug): Either remove the double window/context creation path for modern
  * pixel buffer choice or make it optional -> Old and Modern versions of pixel
  * and context functions.
@@ -123,6 +128,25 @@ int main() {
     std::println();
   }
 
+  auto createVertexBuffer = [](GLuint& id, GLsizeiptr size, const void* data) {
+    glCreateBuffers(1, &id);
+    glBindBuffer(GL_ARRAY_BUFFER, id);
+    glBufferData(GL_ARRAY_BUFFER, size, data, GL_STATIC_DRAW);
+  };
+  const GLsizeiptr bufferSizeBytes = mesh.numVertices * sizeof(Vec3);
+  GLuint vbPosition;
+  createVertexBuffer(vbPosition, bufferSizeBytes, mesh.positions);
+  GLuint vbNormal;
+  createVertexBuffer(vbNormal, bufferSizeBytes, mesh.normals);
+  GLuint vbColor;
+  createVertexBuffer(vbColor, bufferSizeBytes, mesh.colors);
+  GLuint ib;
+  glCreateBuffers(1, &ib);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh.numIndices * sizeof(unsigned int),
+               mesh.indices, GL_STATIC_DRAW);
+
+
   const char* vertSrc = R"glsl(
 #version 460
 
@@ -168,4 +192,6 @@ void main () {
 
     SwapBuffers(dev);
   }
+
+  // glDeleteBuffers(vbPosition);
 }

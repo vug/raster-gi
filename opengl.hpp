@@ -17,6 +17,8 @@ typedef unsigned int GLbitfield;
 typedef unsigned int GLuint;
 typedef unsigned int GLenum;
 typedef float GLfloat;
+typedef signed long long int khronos_ssize_t; // WIN64
+typedef khronos_ssize_t GLsizeiptr;
 #define GL_TRUE 1
 #define GL_FALSE 0
 #define GL_VERSION 0x1F02
@@ -27,6 +29,9 @@ typedef float GLfloat;
 #define GL_COMPILE_STATUS 0x8B81
 #define GL_LINK_STATUS 0x8B82
 #define GL_TRIANGLES 0x0004
+#define GL_ARRAY_BUFFER 0x8892
+#define GL_ELEMENT_ARRAY_BUFFER 0x8893
+#define GL_STATIC_DRAW 0x88E4
 
 // Creates symbol for function pointer type of given method name
 #define FnPtrT(method) FnPtr_##method##_Proc
@@ -96,6 +101,10 @@ DECLARE_FUNC_PTR_TYPE(glUseProgram, void, GLuint program);
 DECLARE_FUNC_PTR_TYPE(glBindVertexArray, void, GLuint array);
 DECLARE_FUNC_PTR_TYPE(glDrawArrays, void, GLenum mode, GLint first,
                       GLsizei count);
+DECLARE_FUNC_PTR_TYPE(glCreateBuffers, void, GLsizei n, GLuint *buffers); 
+DECLARE_FUNC_PTR_TYPE(glDeleteBuffers, void, GLsizei n, const GLuint *buffers);
+DECLARE_FUNC_PTR_TYPE(glBindBuffer, void, GLenum target, GLuint buffer);
+DECLARE_FUNC_PTR_TYPE(glBufferData, void, GLenum target, GLsizeiptr size, const void *data, GLenum usage);
 
 void initGlFunctions();
 
