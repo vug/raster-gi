@@ -1,6 +1,6 @@
 /*
  * Original idea: https://iquilezles.org/articles/simplegi/
- * TODO(vug): glGetUniformLocation, glUniformMatrix4fv, glm::lookAt, glm::perspective
+ * TODO(vug): glm::lookAt, glm::perspective
  * TODO(vug): Either remove the double window/context creation path for modern
  * pixel buffer choice or make it optional -> Old and Modern versions of pixel
  * and context functions.
@@ -156,6 +156,7 @@ layout (location = 0) in vec3 aPosition;  // Position attribute at location 0
 layout (location = 1) in vec3 aNormal;    // Normal attribute at location 1
 layout (location = 2) in vec3 aColor;     // Color attribute at location 2
 
+uniform float uTime = 0.0f;
 uniform mat4 uMVPMatrix = mat4(1);  // Model-View-Projection matrix
 
 out vec3 vNormal;  // Pass normal to fragment shader
@@ -176,11 +177,13 @@ void main() {
 in vec3 vNormal;  // Interpolated normal from vertex shader
 in vec3 vColor;   // Interpolated color from vertex shader
 
+uniform float uTime = 0.0f;
+
 out vec4 fragColor;  // Output color
 
 void main() {
     // For now, we'll just output the color passed in
-    fragColor = vec4(vColor, 1.0);
+    fragColor = vec4(mod(vColor + uTime, 1.0f), 1.0);
 }
 )glsl";
   const GLuint prog = compileShader(vertSrc, fragSrc);
@@ -188,12 +191,18 @@ void main() {
 
   uint32_t vao;
   glCreateVertexArrays(1, &vao);
+  
+  const GLint uTimeLoc = glGetUniformLocation(prog, "uTime");
+  const GLint uMVPMatrixLoc = glGetUniformLocation(prog, "uMVPMatrix");
 
+  const float uMVPMatrix[4][4] = { {1,0,0,0}, {0,1,0,0}, {0,0,1,0}, {0,0,0,1} };
+  glUniformMatrix4fv(uMVPMatrixLoc, 1, GL_FALSE, &uMVPMatrix[0][0]);
 
   const float t0 = getTime();
   while (!GetAsyncKeyState(VK_ESCAPE)) {
     const float t = getTime() - t0;
     const float dt = t - t0;
+    glUniform1f(uTimeLoc, t);
 
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
