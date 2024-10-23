@@ -1,10 +1,14 @@
 /*
  * Original idea: https://iquilezles.org/articles/simplegi/
- * TODO(vug): glm::lookAt, glm::perspective
+ * TODO(vug): glm::lookAt make it as a product of translation and rotation matrices 
+ * TODO(vug): make this constexpr glm::perspective.
+ * TODO(vug): a constexpr math library?
+ * TODO(vug): upload N camera matrices into a storage buffer and switch among them every second
+ * TODO(vug): first do it with storage buffers, then if needed to go down to OpenGL 1, switch to GL_ARRAY_BUFFER_ARB
+ * TODO(vug): try not using CRT and produce small executable
  * TODO(vug): Either remove the double window/context creation path for modern
  * pixel buffer choice or make it optional -> Old and Modern versions of pixel
  * and context functions.
- * TODO(vug): try not using CRT and produce small executable
  * ref:
  * https://www.khronos.org/opengl/wiki/Platform_specifics:_Windows
  * https://gist.github.com/nickrolfe/1127313ed1dbf80254b614a721b3ee9c
@@ -14,6 +18,7 @@
 
 #include "opengl.hpp"
 // #include <gl/GL.h>
+#include "math.hpp"
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
@@ -35,12 +40,6 @@ static inline float getTime() {
   QueryPerformanceCounter(&ticks);
   return (ticks.QuadPart - startTicks.QuadPart) / static_cast<float>(freq.QuadPart);
 }
-
-struct Vec3 {
-  float x;
-  float y;
-  float z;
-};
 
 struct Mesh {
   unsigned int numVertices{};
@@ -152,6 +151,37 @@ int main() {
   const char* vertSrc = R"glsl(
 #version 460
 
+mat4 lookAt(vec3 eye, vec3 center, vec3 up) {
+    vec3 f = normalize(center - eye);
+    vec3 s = normalize(cross(f, up));
+    vec3 u = cross(s, f);
+    mat4 result = mat4(1.0);
+    result[0][0] = s.x;
+    result[1][0] = s.y;
+    result[2][0] = s.z;
+    result[0][1] = u.x;
+    result[1][1] = u.y;
+    result[2][1] = u.z;
+    result[0][2] = -f.x;
+    result[1][2] = -f.y;
+    result[2][2] = -f.z;
+    result[3][0] = -dot(s, eye);
+    result[3][1] = -dot(u, eye);
+    result[3][2] = dot(f, eye);
+    return result;
+}
+
+mat4 perspective(float fov, float aspect, float near, float far) {
+    float tanHalfFov = tan(fov / 2.0f);
+    mat4 result = mat4(0);
+    result[0][0] = 1.0f / (aspect * tanHalfFov);
+    result[1][1] = 1.0f / tanHalfFov;
+    result[2][2] = -(far + near) / (far - near);
+    result[2][3] = -1.0f;
+    result[3][2] = -(2.0f * far * near) / (far - near);
+    return result;
+}
+
 layout (location = 0) in vec3 aPosition;  // Position attribute at location 0
 layout (location = 1) in vec3 aNormal;    // Normal attribute at location 1
 layout (location = 2) in vec3 aColor;     // Color attribute at location 2
@@ -159,12 +189,22 @@ layout (location = 2) in vec3 aColor;     // Color attribute at location 2
 uniform float uTime = 0.0f;
 uniform mat4 uMVPMatrix = mat4(1);  // Model-View-Projection matrix
 
-out vec3 vNormal;  // Pass normal to fragment shader
-out vec3 vColor;   // Pass color to fragment shader
+out vec3 worldPos;
+out vec3 vNormal;
+out vec3 vColor;
 
 void main() {
     // Transform the vertex position by the MVP matrix
-    gl_Position = uMVPMatrix * vec4(aPosition, 1.0);
+    vec3 eye = vec3(2 * cos(uTime), 2, 2 * sin(uTime)); // vec3(cos(uTime),1,sin(uTime));
+    vec3 center = vec3(0, 0, 0);
+    vec3 up = vec3(0, 1, 0);
+    worldPos = aPosition;
+
+    const mat4 model = mat4(1);
+    const mat4 view = lookAt(eye, center, up);
+    const mat4 projection = perspective(3.1415 / 2, 1, 0.1, 100.0);
+    const mat4 mvp = projection * view * model;
+    gl_Position = mvp * vec4(aPosition, 1.0);
     
     // Pass normal and color to the fragment shader
     vNormal = aNormal;
@@ -174,16 +214,22 @@ void main() {
 
   const char* fragSrc = R"glsl(
 #version 460
-in vec3 vNormal;  // Interpolated normal from vertex shader
-in vec3 vColor;   // Interpolated color from vertex shader
+in vec3 vNormal;
+in vec3 vColor;
+in vec3 worldPos;
 
 uniform float uTime = 0.0f;
+
+const vec3 lightPos = vec3(0, 5, 0);
 
 out vec4 fragColor;  // Output color
 
 void main() {
     // For now, we'll just output the color passed in
-    fragColor = vec4(mod(vColor + uTime, 1.0f), 1.0);
+    const vec3 normal = normalize(vNormal);
+    const vec3 lightDir = normalize(lightPos - worldPos);
+    float diffuse = max(0, dot(normal, lightDir));
+    fragColor = vec4(vColor * diffuse, 1.0);
 }
 )glsl";
   const GLuint prog = compileShader(vertSrc, fragSrc);
