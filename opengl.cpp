@@ -117,6 +117,9 @@ DEFINE_FUNC_PTR_TYPE(glVertexAttribPointer);
 DEFINE_FUNC_PTR_TYPE(glDrawElements);
 DEFINE_FUNC_PTR_TYPE(glEnable);
 DEFINE_FUNC_PTR_TYPE(glDepthFunc);
+DEFINE_FUNC_PTR_TYPE(glGetUniformLocation);
+DEFINE_FUNC_PTR_TYPE(glUniform1f);
+DEFINE_FUNC_PTR_TYPE(glUniformMatrix4fv);
 
 void *GetAnyGLFuncAddress(const char *name) {
   void *p = (void *)wglGetProcAddress(name);
@@ -158,6 +161,9 @@ void initGlFunctions() {
   GET_PROC_ADDRESS(glDrawElements);
   GET_PROC_ADDRESS(glEnable);
   GET_PROC_ADDRESS(glDepthFunc);
+  GET_PROC_ADDRESS(glGetUniformLocation);
+  GET_PROC_ADDRESS(glUniform1f);
+  GET_PROC_ADDRESS(glUniformMatrix4fv);
   // GET_PROC_ADDRESS(glViewport, PFNGLVIEWPORTPROC);
 }
 

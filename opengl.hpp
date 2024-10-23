@@ -121,6 +121,10 @@ DECLARE_FUNC_PTR_TYPE(glDrawElements, void, GLenum mode, GLsizei count,
                       GLenum type, const void *indices);
 DECLARE_FUNC_PTR_TYPE(glEnable, void, GLenum cap);
 DECLARE_FUNC_PTR_TYPE(glDepthFunc, void, GLenum func);
+DECLARE_FUNC_PTR_TYPE(glGetUniformLocation, GLint, GLuint program, const GLchar* name);
+DECLARE_FUNC_PTR_TYPE(glUniform1f, void, GLint location, GLfloat v0);
+DECLARE_FUNC_PTR_TYPE(glUniformMatrix4fv, void, GLint location, GLsizei count, GLboolean transpose, const GLfloat* value);
+//DECLARE_FUNC_PTR_TYPE(glFuncName, void, GLint foo);
 
 void initGlFunctions();
 
