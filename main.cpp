@@ -26,9 +26,14 @@ static inline float getTime() {
     QueryPerformanceFrequency(&f);
     return f;
   }();
+  static LARGE_INTEGER startTicks = []() {
+    LARGE_INTEGER t0;
+    QueryPerformanceCounter(&t0);
+    return t0;
+    }();
   LARGE_INTEGER ticks;
   QueryPerformanceCounter(&ticks);
-  return ticks.QuadPart / static_cast<float>(freq.QuadPart);
+  return (ticks.QuadPart - startTicks.QuadPart) / static_cast<float>(freq.QuadPart);
 }
 
 struct Vec3 {
@@ -122,7 +127,7 @@ int main() {
     for (unsigned int c = 0; c < 3; c++) {
       std::print("{} ", mesh.indices[triIx * 3 + c]);
     }
-    std::println();
+    std::println("");
   }
 
   auto createVertexBuffer = [](GLuint& id, GLsizeiptr size, const void* data) {
@@ -178,14 +183,14 @@ void main() {
     fragColor = vec4(vColor, 1.0);
 }
 )glsl";
-  GLuint prog = compileShader(vertSrc, fragSrc);
+  const GLuint prog = compileShader(vertSrc, fragSrc);
   glUseProgram(prog);
 
   uint32_t vao;
   glCreateVertexArrays(1, &vao);
 
 
-  float t0 = getTime();
+  const float t0 = getTime();
   while (!GetAsyncKeyState(VK_ESCAPE)) {
     const float t = getTime() - t0;
     const float dt = t - t0;
