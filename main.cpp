@@ -3,7 +3,6 @@
  * TODO(vug): glm::lookAt make it as a product of translation and rotation matrices 
  * TODO(vug): make this constexpr glm::perspective.
  * TODO(vug): a constexpr math library?
- * TODO(vug): upload N camera matrices into a storage buffer and switch among them every second
  * TODO(vug): first do it with storage buffers, then if needed to go down to OpenGL 1, switch to GL_ARRAY_BUFFER_ARB
  * TODO(vug): try not using CRT and produce small executable
  * TODO(vug): Either remove the double window/context creation path for modern
@@ -147,7 +146,6 @@ int main() {
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh.numIndices * sizeof(unsigned int),
                mesh.indices, GL_STATIC_DRAW);
 
-
   const char* vertSrc = R"glsl(
 #version 460
 
@@ -182,9 +180,13 @@ mat4 perspective(float fov, float aspect, float near, float far) {
     return result;
 }
 
-layout (location = 0) in vec3 aPosition;  // Position attribute at location 0
-layout (location = 1) in vec3 aNormal;    // Normal attribute at location 1
-layout (location = 2) in vec3 aColor;     // Color attribute at location 2
+layout (location = 0) in vec3 aPosition;
+layout (location = 1) in vec3 aNormal;
+layout (location = 2) in vec3 aColor;
+
+layout(std430, binding = 0) buffer CamPositions {
+    vec3 camPositions[3];
+};
 
 uniform float uTime = 0.0f;
 uniform mat4 uMVPMatrix = mat4(1);  // Model-View-Projection matrix
@@ -195,7 +197,9 @@ out vec3 vColor;
 
 void main() {
     // Transform the vertex position by the MVP matrix
-    vec3 eye = vec3(2 * cos(uTime), 2, 2 * sin(uTime)); // vec3(cos(uTime),1,sin(uTime));
+    //vec3 eye = vec3(2 * cos(uTime), 2, 2 * sin(uTime)); // vec3(cos(uTime),1,sin(uTime));
+    int sbIx = int(uTime) % 3;
+    vec3 eye = camPositions[sbIx];
     vec3 center = vec3(0, 0, 0);
     vec3 up = vec3(0, 1, 0);
     worldPos = aPosition;
@@ -237,10 +241,17 @@ void main() {
 
   uint32_t vao;
   glCreateVertexArrays(1, &vao);
+
+  const unsigned int numMatrices = 3;
+  Vec3 camPositions[3] = { Vec3{2, 2, 2}, Vec3{2, -2, 2}, Vec3{-2, 0, -2 } };
+  GLuint sb{};
+  glCreateBuffers(1, &sb);
+  glBindBuffer(GL_SHADER_STORAGE_BUFFER, sb);
+  glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(Vec3) * 3, camPositions, GL_STATIC_DRAW);
+  glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, sb);
   
   const GLint uTimeLoc = glGetUniformLocation(prog, "uTime");
   const GLint uMVPMatrixLoc = glGetUniformLocation(prog, "uMVPMatrix");
-
   const float uMVPMatrix[4][4] = { {1,0,0,0}, {0,1,0,0}, {0,0,1,0}, {0,0,0,1} };
   glUniformMatrix4fv(uMVPMatrixLoc, 1, GL_FALSE, &uMVPMatrix[0][0]);
 

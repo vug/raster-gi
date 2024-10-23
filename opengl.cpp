@@ -120,6 +120,7 @@ DEFINE_FUNC_PTR_TYPE(glDepthFunc);
 DEFINE_FUNC_PTR_TYPE(glGetUniformLocation);
 DEFINE_FUNC_PTR_TYPE(glUniform1f);
 DEFINE_FUNC_PTR_TYPE(glUniformMatrix4fv);
+DEFINE_FUNC_PTR_TYPE(glBindBufferBase);
 
 void *GetAnyGLFuncAddress(const char *name) {
   void *p = (void *)wglGetProcAddress(name);
@@ -164,6 +165,7 @@ void initGlFunctions() {
   GET_PROC_ADDRESS(glGetUniformLocation);
   GET_PROC_ADDRESS(glUniform1f);
   GET_PROC_ADDRESS(glUniformMatrix4fv);
+  GET_PROC_ADDRESS(glBindBufferBase);
   // GET_PROC_ADDRESS(glViewport, PFNGLVIEWPORTPROC);
 }
 

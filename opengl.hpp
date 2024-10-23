@@ -38,6 +38,7 @@ typedef unsigned char GLboolean;
 #define GL_UNSIGNED_INT 0x1405
 #define GL_DEPTH_TEST 0x0B71
 #define GL_LESS 0x0201
+#define GL_SHADER_STORAGE_BUFFER 0x90D2
 
 // Creates symbol for function pointer type of given method name
 #define FnPtrT(method) FnPtr_##method##_Proc
@@ -124,6 +125,7 @@ DECLARE_FUNC_PTR_TYPE(glDepthFunc, void, GLenum func);
 DECLARE_FUNC_PTR_TYPE(glGetUniformLocation, GLint, GLuint program, const GLchar* name);
 DECLARE_FUNC_PTR_TYPE(glUniform1f, void, GLint location, GLfloat v0);
 DECLARE_FUNC_PTR_TYPE(glUniformMatrix4fv, void, GLint location, GLsizei count, GLboolean transpose, const GLfloat* value);
+DECLARE_FUNC_PTR_TYPE(glBindBufferBase, void, GLenum target, GLuint index, GLuint buffer);
 //DECLARE_FUNC_PTR_TYPE(glFuncName, void, GLint foo);
 
 void initGlFunctions();
