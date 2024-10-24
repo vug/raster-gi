@@ -95,7 +95,9 @@ Mesh readMeshFromFile(const char* fileName) {
 int main() {
   loadWglCreateContextAttribsARB();
   HDC dev;
-  createAndShowWindow("RasterGI", 1024, 1024, dev);
+  const uint32_t winWidth = 1024;
+  const uint32_t winHeight = 1024;
+  createAndShowWindow("RasterGI", winWidth, winHeight, dev);
   setPixelFormatFancy(dev);
   createAndMakeOpenGlContext(dev);
 
@@ -255,12 +257,57 @@ void main() {
   const float uMVPMatrix[4][4] = { {1,0,0,0}, {0,1,0,0}, {0,0,1,0}, {0,0,0,1} };
   glUniformMatrix4fv(uMVPMatrixLoc, 1, GL_FALSE, &uMVPMatrix[0][0]);
 
+  const GLsizei viewportSize = 32;
+  const GLsizei numViewports = 1;
+
+  GLuint texOffScreen{};
+  glGenTextures(1, &texOffScreen);
+  glBindTexture(GL_TEXTURE_2D, texOffScreen);
+  const GLsizei texWidth = viewportSize * numViewports;
+  const GLsizei texHeight = viewportSize;
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, texWidth, texHeight, 0, GL_RGB, GL_FLOAT, nullptr);
+  std::println("texOffscreen: {}", texOffScreen);
+
+  GLuint fbOffScreen{};
+  glGenFramebuffers(1, &fbOffScreen);
+  glBindFramebuffer(GL_FRAMEBUFFER, fbOffScreen);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texOffScreen, 0);
+  const GLenum fbOffScreenStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+  if (fbOffScreenStatus != GL_FRAMEBUFFER_COMPLETE) {
+    if (fbOffScreenStatus == GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT)
+      fatal("Framebuffer not complete due to incomplete attachment.");
+    if (fbOffScreenStatus == GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT)
+      fatal("Framebuffer not complete due to missing attachment.");
+    fatal("Failed to complete offscreen framebuffer");
+  }
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
   const float t0 = getTime();
   while (!GetAsyncKeyState(VK_ESCAPE)) {
     const float t = getTime() - t0;
     const float dt = t - t0;
     glUniform1f(uTimeLoc, t);
 
+    glBindFramebuffer(GL_FRAMEBUFFER, fbOffScreen);
+    glViewport(0, 0, viewportSize, viewportSize);
+    glClearColor(1.f, 0.f, 0.f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    Vec3 pixels[viewportSize * viewportSize];
+    glReadPixels(0, 0, viewportSize, viewportSize, GL_RGB, GL_FLOAT, pixels);
+    static bool hasPrinted = false;
+    if (!hasPrinted) {
+      for (uint32_t i = 0; i < 2; ++i) {
+        for (uint32_t j = 0; j < 2; ++j) {
+          const uint32_t pIx = i * viewportSize + j;
+          const Vec3& px = pixels[pIx];
+          std::print("({}, {}, {})", px.x, px.y, px.z);
+        }
+        std::print("\n");
+      }
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glViewport(0, 0, winWidth, winHeight);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
     glClearColor(0.f, 0.f, 0.f, 1.0f);
