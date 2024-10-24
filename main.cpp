@@ -1,23 +1,9 @@
-/*
- * Original idea: https://iquilezles.org/articles/simplegi/
- * TODO(vug): glm::lookAt make it as a product of translation and rotation matrices 
- * TODO(vug): make this constexpr glm::perspective.
- * TODO(vug): a constexpr math library?
- * TODO(vug): first do it with storage buffers, then if needed to go down to OpenGL 1, switch to GL_ARRAY_BUFFER_ARB
- * TODO(vug): try not using CRT and produce small executable
- * TODO(vug): Either remove the double window/context creation path for modern
- * pixel buffer choice or make it optional -> Old and Modern versions of pixel
- * and context functions.
- * ref:
- * https://www.khronos.org/opengl/wiki/Platform_specifics:_Windows
- * https://gist.github.com/nickrolfe/1127313ed1dbf80254b614a721b3ee9c
- * https://www.khronos.org/opengl/wiki/Creating_an_OpenGL_Context_(WGL)
- * https://glad.dav1d.de/
- */
+// Original idea: https://iquilezles.org/articles/simplegi/
 
 #include "opengl.hpp"
 // #include <gl/GL.h>
-#include "math.hpp"
+// #include "math.hpp"
+#include <vendor/HandmadeMath.h>
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
@@ -34,18 +20,19 @@ static inline float getTime() {
     LARGE_INTEGER t0;
     QueryPerformanceCounter(&t0);
     return t0;
-    }();
+  }();
   LARGE_INTEGER ticks;
   QueryPerformanceCounter(&ticks);
-  return (ticks.QuadPart - startTicks.QuadPart) / static_cast<float>(freq.QuadPart);
+  return (ticks.QuadPart - startTicks.QuadPart) /
+         static_cast<float>(freq.QuadPart);
 }
 
 struct Mesh {
   unsigned int numVertices{};
   unsigned int numIndices{};
-  Vec3* positions{};
-  Vec3* normals{};
-  Vec3* colors{};
+  HMM_Vec3* positions{};
+  HMM_Vec3* normals{};
+  HMM_Vec3* colors{};
   unsigned int* indices{};
   // ~Mesh() { delete[] positions; delete[] normals; delete[] colors; }
 };
@@ -71,11 +58,11 @@ Mesh readMeshFromFile(const char* fileName) {
     fatal("Failed to read numIndices from file.");
   }
 
-  const DWORD attrSizeBytes = mesh.numVertices * sizeof(Vec3);
-  mesh.positions = new Vec3[mesh.numVertices];
-  mesh.normals = new Vec3[mesh.numVertices];
-  mesh.colors = new Vec3[mesh.numVertices];
-  for (Vec3* attr : {mesh.positions, mesh.normals, mesh.colors}) {
+  const DWORD attrSizeBytes = mesh.numVertices * sizeof(HMM_Vec3);
+  mesh.positions = new HMM_Vec3[mesh.numVertices];
+  mesh.normals = new HMM_Vec3[mesh.numVertices];
+  mesh.colors = new HMM_Vec3[mesh.numVertices];
+  for (HMM_Vec3* attr : {mesh.positions, mesh.normals, mesh.colors}) {
     if (!ReadFile(hFile, attr, attrSizeBytes, &bytesRead, NULL) ||
         bytesRead != attrSizeBytes) {
       fatal("Failed to read position data.");
@@ -113,14 +100,14 @@ int main() {
                mesh.numIndices);
   // TODO(vug): remove debug prints, it works
   for (unsigned int vertIx = 0; vertIx < 3; vertIx++) {
-    const Vec3& pos = mesh.positions[vertIx];
-    const Vec3& norm = mesh.normals[vertIx];
-    const Vec3& col = mesh.colors[vertIx];
+    const HMM_Vec3& pos = mesh.positions[vertIx];
+    const HMM_Vec3& norm = mesh.normals[vertIx];
+    const HMM_Vec3& col = mesh.colors[vertIx];
     std::println(
         "vert[{}] ({:.3f}, {:.3f}, {:.3f}), ({:.3f}, {:.3f}, {:.3f}), ({:.3f}, "
         "{:.3f}, {:.3f})",
-        vertIx, pos.x, pos.y, pos.z, norm.x, norm.y, norm.z, col.x, col.y,
-        col.z);
+        vertIx, pos.X, pos.Y, pos.Z, norm.X, norm.Y, norm.Z, col.X, col.Y,
+        col.Z);
   }
   for (unsigned int triIx = 0; triIx < 5; triIx++) {
     std::print("{} ", triIx);
@@ -135,7 +122,7 @@ int main() {
     glBindBuffer(GL_ARRAY_BUFFER, id);
     glBufferData(GL_ARRAY_BUFFER, size, data, GL_STATIC_DRAW);
   };
-  const GLsizeiptr bufferSizeBytes = mesh.numVertices * sizeof(Vec3);
+  const GLsizeiptr bufferSizeBytes = mesh.numVertices * sizeof(HMM_Vec3);
   GLuint vbPosition;
   createVertexBuffer(vbPosition, bufferSizeBytes, mesh.positions);
   GLuint vbNormal;
@@ -191,7 +178,9 @@ layout(std430, binding = 0) buffer CamPositions {
 };
 
 uniform float uTime = 0.0f;
-uniform mat4 uMVPMatrix = mat4(1);  // Model-View-Projection matrix
+uniform mat4 uWorldFromObject = mat4(1);
+uniform mat4 uViewFromWorld = mat4(1);
+uniform mat4 uProjectionFromView = mat4(1);
 
 out vec3 worldPos;
 out vec3 vNormal;
@@ -199,18 +188,21 @@ out vec3 vColor;
 
 void main() {
     // Transform the vertex position by the MVP matrix
-    //vec3 eye = vec3(2 * cos(uTime), 2, 2 * sin(uTime)); // vec3(cos(uTime),1,sin(uTime));
+    vec3 eye = vec3(2 * cos(uTime), 1, 2 * sin(uTime)); 
+    //vec3 eye = vec3(5, -5, 5);
     int sbIx = int(uTime) % 3;
-    vec3 eye = camPositions[sbIx];
+    //vec3 eye = camPositions[sbIx];
     vec3 center = vec3(0, 0, 0);
     vec3 up = vec3(0, 1, 0);
-    worldPos = aPosition;
+    worldPos = vec3(uWorldFromObject * vec4(aPosition, 1));
 
-    const mat4 model = mat4(1);
-    const mat4 view = lookAt(eye, center, up);
-    const mat4 projection = perspective(3.1415 / 2, 1, 0.1, 100.0);
-    const mat4 mvp = projection * view * model;
-    gl_Position = mvp * vec4(aPosition, 1.0);
+    // const mat4 model = mat4(1);
+    // const mat4 view = lookAt(eye, center, up);
+    // const mat4 projection = perspective(3.1415 / 2, 1, 0.1, 100.0);
+    // const mat4 mvp = projection * view * model;
+    // gl_Position = mvp * vec4(aPosition, 1.0);
+    const mat4 MVP = uProjectionFromView * uViewFromWorld * uWorldFromObject;
+    gl_Position = MVP * vec4(aPosition, 1.0);
     
     // Pass normal and color to the fragment shader
     vNormal = aNormal;
@@ -226,7 +218,7 @@ in vec3 worldPos;
 
 uniform float uTime = 0.0f;
 
-const vec3 lightPos = vec3(0, 5, 0);
+const vec3 lightPos = vec3(1, 5, 1);
 
 out vec4 fragColor;  // Output color
 
@@ -235,7 +227,9 @@ void main() {
     const vec3 normal = normalize(vNormal);
     const vec3 lightDir = normalize(lightPos - worldPos);
     float diffuse = max(0, dot(normal, lightDir));
-    fragColor = vec4(vColor * diffuse, 1.0);
+    fragColor = vec4(vColor, 1.0);
+    //fragColor = vec4(vec3(diffuse), 1.0);
+    fragColor = vec4(vColor + diffuse, 1.0);
 }
 )glsl";
   const GLuint prog = compileShader(vertSrc, fragSrc);
@@ -245,17 +239,32 @@ void main() {
   glCreateVertexArrays(1, &vao);
 
   const unsigned int numMatrices = 3;
-  Vec3 camPositions[3] = { Vec3{2, 2, 2}, Vec3{2, -2, 2}, Vec3{-2, 0, -2 } };
+  HMM_Vec3 camPositions[3] = {HMM_Vec3{2, 2, 2}, HMM_Vec3{2, -2, 2},
+                              HMM_Vec3{-2, 0, -2}};
   GLuint sb{};
   glCreateBuffers(1, &sb);
   glBindBuffer(GL_SHADER_STORAGE_BUFFER, sb);
-  glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(Vec3) * 3, camPositions, GL_STATIC_DRAW);
+  glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(HMM_Vec3) * 3, camPositions,
+               GL_STATIC_DRAW);
   glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, sb);
-  
+
   const GLint uTimeLoc = glGetUniformLocation(prog, "uTime");
-  const GLint uMVPMatrixLoc = glGetUniformLocation(prog, "uMVPMatrix");
-  const float uMVPMatrix[4][4] = { {1,0,0,0}, {0,1,0,0}, {0,0,1,0}, {0,0,0,1} };
-  glUniformMatrix4fv(uMVPMatrixLoc, 1, GL_FALSE, &uMVPMatrix[0][0]);
+  // const GLint uMVPMatrixLoc = glGetUniformLocation(prog, "uMVPMatrix");
+  // const float uMVPMatrix[4][4] = { {1,0,0,0}, {0,1,0,0}, {0,0,1,0}, {0,0,0,1}
+  // }; glUniformMatrix4fv(uMVPMatrixLoc, 1, GL_FALSE, &uMVPMatrix[0][0]);
+  const GLint uWorldFromObjectLoc =
+      glGetUniformLocation(prog, "uWorldFromObject");
+  const GLint uViewFromWorldLoc = glGetUniformLocation(prog, "uViewFromWorld");
+  const GLint uProjectionFromViewLoc =
+      glGetUniformLocation(prog, "uProjectionFromView");
+  const HMM_Mat4 worldFromObject = HMM_M4D(1.f);
+  glUniformMatrix4fv(uWorldFromObjectLoc, 1, GL_FALSE,
+                     &worldFromObject.Elements[0][0]);
+
+  const HMM_Mat4 projectionFromView =
+      HMM_Perspective_RH_ZO(HMM_PI / 4, 1.0f, 0.01f, 100.0f);
+  glUniformMatrix4fv(uProjectionFromViewLoc, 1, GL_FALSE,
+                     &projectionFromView.Elements[0][0]);
 
   const GLsizei viewportSize = 32;
   const GLsizei numViewports = 1;
@@ -265,13 +274,15 @@ void main() {
   glBindTexture(GL_TEXTURE_2D, texOffScreen);
   const GLsizei texWidth = viewportSize * numViewports;
   const GLsizei texHeight = viewportSize;
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, texWidth, texHeight, 0, GL_RGB, GL_FLOAT, nullptr);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, texWidth, texHeight, 0, GL_RGB,
+               GL_FLOAT, nullptr);
   std::println("texOffscreen: {}", texOffScreen);
 
   GLuint fbOffScreen{};
   glGenFramebuffers(1, &fbOffScreen);
   glBindFramebuffer(GL_FRAMEBUFFER, fbOffScreen);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texOffScreen, 0);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                         texOffScreen, 0);
   const GLenum fbOffScreenStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
   if (fbOffScreenStatus != GL_FRAMEBUFFER_COMPLETE) {
     if (fbOffScreenStatus == GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT)
@@ -281,6 +292,7 @@ void main() {
     fatal("Failed to complete offscreen framebuffer");
   }
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  //glEnable(GL_CULL_FACE);
 
   const float t0 = getTime();
   while (!GetAsyncKeyState(VK_ESCAPE)) {
@@ -288,22 +300,29 @@ void main() {
     const float dt = t - t0;
     glUniform1f(uTimeLoc, t);
 
+    HMM_Mat4 viewFromWorld = HMM_LookAt_RH(
+         HMM_V3(10 * HMM_CosF(t), 10 * HMM_SinF(t), 1),
+      HMM_V3(0, 0, 0), HMM_V3(0, 0, 1));
+    glUniformMatrix4fv(uViewFromWorldLoc, 1, GL_FALSE,
+                       &viewFromWorld.Elements[0][0]);
+
     glBindFramebuffer(GL_FRAMEBUFFER, fbOffScreen);
     glViewport(0, 0, viewportSize, viewportSize);
     glClearColor(1.f, 0.f, 0.f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    Vec3 pixels[viewportSize * viewportSize];
+    HMM_Vec3 pixels[viewportSize * viewportSize];
     glReadPixels(0, 0, viewportSize, viewportSize, GL_RGB, GL_FLOAT, pixels);
     static bool hasPrinted = false;
     if (!hasPrinted) {
       for (uint32_t i = 0; i < 2; ++i) {
         for (uint32_t j = 0; j < 2; ++j) {
           const uint32_t pIx = i * viewportSize + j;
-          const Vec3& px = pixels[pIx];
-          std::print("({}, {}, {})", px.x, px.y, px.z);
+          const HMM_Vec3& px = pixels[pIx];
+          std::print("({}, {}, {})", px.X, px.Y, px.Z);
         }
         std::print("\n");
       }
+      hasPrinted = true;
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -318,11 +337,11 @@ void main() {
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
     glEnableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, vbNormal);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, nullptr);  
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
     glEnableVertexAttribArray(1);
     glBindBuffer(GL_ARRAY_BUFFER, vbColor);
     glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
-    glEnableVertexAttribArray(2); // color
+    glEnableVertexAttribArray(2);  // color
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib);
 
     glDrawElements(GL_TRIANGLES, mesh.numIndices, GL_UNSIGNED_INT, nullptr);
