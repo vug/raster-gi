@@ -121,6 +121,15 @@ DEFINE_FUNC_PTR_TYPE(glGetUniformLocation);
 DEFINE_FUNC_PTR_TYPE(glUniform1f);
 DEFINE_FUNC_PTR_TYPE(glUniformMatrix4fv);
 DEFINE_FUNC_PTR_TYPE(glBindBufferBase);
+DEFINE_FUNC_PTR_TYPE(glGenTextures);
+DEFINE_FUNC_PTR_TYPE(glBindTexture);
+DEFINE_FUNC_PTR_TYPE(glTexImage2D);
+DEFINE_FUNC_PTR_TYPE(glGenFramebuffers);
+DEFINE_FUNC_PTR_TYPE(glBindFramebuffer);
+DEFINE_FUNC_PTR_TYPE(glFramebufferTexture2D);
+DEFINE_FUNC_PTR_TYPE(glViewport);
+DEFINE_FUNC_PTR_TYPE(glReadPixels);
+DEFINE_FUNC_PTR_TYPE(glCheckFramebufferStatus);
 
 void *GetAnyGLFuncAddress(const char *name) {
   void *p = (void *)wglGetProcAddress(name);
@@ -166,7 +175,15 @@ void initGlFunctions() {
   GET_PROC_ADDRESS(glUniform1f);
   GET_PROC_ADDRESS(glUniformMatrix4fv);
   GET_PROC_ADDRESS(glBindBufferBase);
-  // GET_PROC_ADDRESS(glViewport, PFNGLVIEWPORTPROC);
+  GET_PROC_ADDRESS(glGenTextures);
+  GET_PROC_ADDRESS(glBindTexture);
+  GET_PROC_ADDRESS(glTexImage2D);
+  GET_PROC_ADDRESS(glGenFramebuffers);
+  GET_PROC_ADDRESS(glBindFramebuffer);
+  GET_PROC_ADDRESS(glFramebufferTexture2D);
+  GET_PROC_ADDRESS(glViewport);
+  GET_PROC_ADDRESS(glReadPixels);
+  GET_PROC_ADDRESS(glCheckFramebufferStatus);
 }
 
 void loadWglCreateContextAttribsARB() {

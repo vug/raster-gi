@@ -39,6 +39,14 @@ typedef unsigned char GLboolean;
 #define GL_DEPTH_TEST 0x0B71
 #define GL_LESS 0x0201
 #define GL_SHADER_STORAGE_BUFFER 0x90D2
+#define GL_TEXTURE_2D 0x0DE1
+#define GL_RGB 0x1907
+#define GL_RGB32F 0x8815
+#define GL_FRAMEBUFFER 0x8D40
+#define GL_COLOR_ATTACHMENT0 0x8CE0
+#define GL_FRAMEBUFFER_COMPLETE 0x8CD5
+#define GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT 0x8CD6 //
+#define GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT 0x8CD7
 
 // Creates symbol for function pointer type of given method name
 #define FnPtrT(method) FnPtr_##method##_Proc
@@ -126,6 +134,16 @@ DECLARE_FUNC_PTR_TYPE(glGetUniformLocation, GLint, GLuint program, const GLchar*
 DECLARE_FUNC_PTR_TYPE(glUniform1f, void, GLint location, GLfloat v0);
 DECLARE_FUNC_PTR_TYPE(glUniformMatrix4fv, void, GLint location, GLsizei count, GLboolean transpose, const GLfloat* value);
 DECLARE_FUNC_PTR_TYPE(glBindBufferBase, void, GLenum target, GLuint index, GLuint buffer);
+DECLARE_FUNC_PTR_TYPE(glGenTextures, void, GLsizei n, GLuint* textures);
+DECLARE_FUNC_PTR_TYPE(glBindTexture, void, GLenum target, GLuint texture);
+DECLARE_FUNC_PTR_TYPE(glTexImage2D, void, GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const void* pixels);
+DECLARE_FUNC_PTR_TYPE(glGenFramebuffers, void, GLsizei n, GLuint* framebuffers);
+DECLARE_FUNC_PTR_TYPE(glBindFramebuffer, void, GLenum target, GLuint framebuffer);
+DECLARE_FUNC_PTR_TYPE(glFramebufferTexture2D, void, GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level);
+DECLARE_FUNC_PTR_TYPE(glViewport, void, GLint x, GLint y, GLsizei width, GLsizei height);
+DECLARE_FUNC_PTR_TYPE(glReadPixels, void, GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, void* pixels);
+DECLARE_FUNC_PTR_TYPE(glCheckFramebufferStatus, GLenum, GLenum target);
+
 //DECLARE_FUNC_PTR_TYPE(glFuncName, void, GLint foo);
 
 void initGlFunctions();
