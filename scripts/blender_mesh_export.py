@@ -1,6 +1,3 @@
-"""
-In Blender, create/load a mesh. Select it. Go to Data > Color Attributes. Add a new one. name it "Color". Stay in Object mode. Select the object. Run this script.
-"""
 print("Hi!")
 
 import random
@@ -23,11 +20,11 @@ for vertIx in range(num_vertices):
     v = mesh.vertices[vertIx]
     pos = v.co
     norm = v.normal
-    col = Vector(colorData[0].color)
+    col = Vector(colorData[vertIx].color)
     positions.extend(pos)
     normals.extend(norm)
-    # colors.extend(col[:3])
-    colors.extend([random.random(), random.random(), random.random()])
+    colors.extend(col[:3])
+    # colors.extend([random.random(), random.random(), random.random()])
     if vertIx < 5:
         print(f"vert[{vertIx}] {pos}, {norm}, {col}")
 
@@ -42,7 +39,7 @@ num_indices = len(indices)
 
 print(f"num vertices {num_vertices}, num positions {len(positions)}, num normals {len(normals)}, num colors {len(colors)}, num indices {len(indices)}")
 
-with open("c:/Users/veliu/Documents/suzanne.mesh", "wb") as f:
+with open("c:/Users/veliu/Documents/spiky.mesh", "wb") as f:
     f.write(struct.pack('I', num_vertices))
     f.write(struct.pack('I', num_indices))
     for x in positions:
