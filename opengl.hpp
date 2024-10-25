@@ -17,8 +17,10 @@ typedef unsigned int GLbitfield;
 typedef unsigned int GLuint;
 typedef unsigned int GLenum;
 typedef float GLfloat;
-typedef signed long long int khronos_ssize_t; // WIN64
+typedef signed long long int khronos_ssize_t; // _WIN64
 typedef khronos_ssize_t GLsizeiptr;
+typedef signed long long int khronos_intptr_t; // _WIN64
+typedef khronos_intptr_t GLintptr;
 typedef unsigned char GLboolean;
 #define GL_TRUE 1
 #define GL_FALSE 0
@@ -144,6 +146,8 @@ DECLARE_FUNC_PTR_TYPE(glFramebufferTexture2D, void, GLenum target, GLenum attach
 DECLARE_FUNC_PTR_TYPE(glViewport, void, GLint x, GLint y, GLsizei width, GLsizei height);
 DECLARE_FUNC_PTR_TYPE(glReadPixels, void, GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, void* pixels);
 DECLARE_FUNC_PTR_TYPE(glCheckFramebufferStatus, GLenum, GLenum target);
+DECLARE_FUNC_PTR_TYPE(glBufferSubData, void, GLenum target, GLintptr offset,
+                      GLsizeiptr size, const void *data);
 
 //DECLARE_FUNC_PTR_TYPE(glFuncName, void, GLint foo);
 
