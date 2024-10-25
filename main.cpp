@@ -174,20 +174,8 @@ void main() {
   uint32_t vao;
   glCreateVertexArrays(1, &vao);
 
-  const unsigned int numMatrices = 3;
-  HMM_Vec3 camPositions[3] = {HMM_Vec3{2, 2, 2}, HMM_Vec3{2, -2, 2},
-                              HMM_Vec3{-2, 0, -2}};
-  GLuint sb{};
-  glCreateBuffers(1, &sb);
-  glBindBuffer(GL_SHADER_STORAGE_BUFFER, sb);
-  glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(HMM_Vec3) * 3, camPositions,
-               GL_STATIC_DRAW);
-  glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, sb);
-
   const GLint uTimeLoc = glGetUniformLocation(prog, "uTime");
-  // const GLint uMVPMatrixLoc = glGetUniformLocation(prog, "uMVPMatrix");
-  // const float uMVPMatrix[4][4] = { {1,0,0,0}, {0,1,0,0}, {0,0,1,0}, {0,0,0,1}
-  // }; glUniformMatrix4fv(uMVPMatrixLoc, 1, GL_FALSE, &uMVPMatrix[0][0]);
+
   const GLint uWorldFromObjectLoc =
       glGetUniformLocation(prog, "uWorldFromObject");
   const GLint uViewFromWorldLoc = glGetUniformLocation(prog, "uViewFromWorld");
@@ -251,8 +239,9 @@ void main() {
     glUniformMatrix4fv(uProjectionFromViewLoc, 1, GL_FALSE,
                        &projectionFromView.Elements[0][0]);
 
-    // Loop over every vertex, render the scene from vertex position into normal direction into a small texture
-    // take average pixel of the texture and store it as the incoming radiance for that vertex
+    // Loop over every vertex, render the scene from vertex position into normal
+    // direction into a small texture take average pixel of the texture and
+    // store it as the incoming radiance for that vertex
     glBindFramebuffer(GL_FRAMEBUFFER, fbOffScreen);
     glViewport(0, 0, viewportSize, viewportSize);
     glClearColor(0.f, 0.f, 0.f, 1.0f);
@@ -280,11 +269,13 @@ void main() {
         }
       }
       const HMM_Vec3 radiance = totalRadiance / (viewportSize * viewportSize);
-      // adding direct lighting to emissive values (will loop later for indirect lighting)
+      // adding direct lighting to emissive values (will loop later for indirect
+      // lighting)
       radiances[vertIx] += radiance;
     }
     glBindBuffer(GL_ARRAY_BUFFER, vbColor);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(HMM_Vec3) * mesh.numVertices, radiances);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(HMM_Vec3) * mesh.numVertices,
+                    radiances);
 
     // Render the world from camera POV
     const HMM_Mat4 worldFromObject2 = HMM_M4D(1.f);
