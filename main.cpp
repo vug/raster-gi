@@ -91,30 +91,19 @@ int main() {
   initGlFunctions();
   std::println("OpenGL version: {}", (char*)glGetString(GL_VERSION));
 
+  const HMM_Vec3 kUp = HMM_V3(0, 0, 1);
+
   char path[MAX_PATH];
   GetCurrentDirectoryA(MAX_PATH, path);
   strcat_s(path, "\\assets\\");
-  strcat_s(path, "suzanne.mesh");
+  strcat_s(path, "spiky.mesh");
   Mesh mesh = readMeshFromFile(path);
   std::println("numVertices {}, numIndices {}", mesh.numVertices,
                mesh.numIndices);
-  // TODO(vug): remove debug prints, it works
   for (unsigned int vertIx = 0; vertIx < 3; vertIx++) {
     const HMM_Vec3& pos = mesh.positions[vertIx];
     const HMM_Vec3& norm = mesh.normals[vertIx];
     const HMM_Vec3& col = mesh.colors[vertIx];
-    std::println(
-        "vert[{}] ({:.3f}, {:.3f}, {:.3f}), ({:.3f}, {:.3f}, {:.3f}), ({:.3f}, "
-        "{:.3f}, {:.3f})",
-        vertIx, pos.X, pos.Y, pos.Z, norm.X, norm.Y, norm.Z, col.X, col.Y,
-        col.Z);
-  }
-  for (unsigned int triIx = 0; triIx < 5; triIx++) {
-    std::print("{} ", triIx);
-    for (unsigned int c = 0; c < 3; c++) {
-      std::print("{} ", mesh.indices[triIx * 3 + c]);
-    }
-    std::println("");
   }
 
   auto createVertexBuffer = [](GLuint& id, GLsizeiptr size, const void* data) {
@@ -187,11 +176,10 @@ out vec3 vNormal;
 out vec3 vColor;
 
 void main() {
-    // Transform the vertex position by the MVP matrix
     vec3 eye = vec3(2 * cos(uTime), 1, 2 * sin(uTime)); 
-    //vec3 eye = vec3(5, -5, 5);
-    int sbIx = int(uTime) % 3;
-    //vec3 eye = camPositions[sbIx];
+    // vec3 eye = vec3(5, -5, 5);
+    // int sbIx = int(uTime) % 3;
+    // vec3 eye = camPositions[sbIx];
     vec3 center = vec3(0, 0, 0);
     vec3 up = vec3(0, 1, 0);
     worldPos = vec3(uWorldFromObject * vec4(aPosition, 1));
@@ -204,7 +192,6 @@ void main() {
     const mat4 MVP = uProjectionFromView * uViewFromWorld * uWorldFromObject;
     gl_Position = MVP * vec4(aPosition, 1.0);
     
-    // Pass normal and color to the fragment shader
     vNormal = aNormal;
     vColor = aColor;
 }
@@ -223,13 +210,12 @@ const vec3 lightPos = vec3(1, 5, 1);
 out vec4 fragColor;  // Output color
 
 void main() {
-    // For now, we'll just output the color passed in
     const vec3 normal = normalize(vNormal);
     const vec3 lightDir = normalize(lightPos - worldPos);
     float diffuse = max(0, dot(normal, lightDir));
     fragColor = vec4(vColor, 1.0);
     //fragColor = vec4(vec3(diffuse), 1.0);
-    fragColor = vec4(vColor + diffuse, 1.0);
+    //fragColor = vec4(vColor + diffuse, 1.0);
 }
 )glsl";
   const GLuint prog = compileShader(vertSrc, fragSrc);
@@ -257,14 +243,6 @@ void main() {
   const GLint uViewFromWorldLoc = glGetUniformLocation(prog, "uViewFromWorld");
   const GLint uProjectionFromViewLoc =
       glGetUniformLocation(prog, "uProjectionFromView");
-  const HMM_Mat4 worldFromObject = HMM_M4D(1.f);
-  glUniformMatrix4fv(uWorldFromObjectLoc, 1, GL_FALSE,
-                     &worldFromObject.Elements[0][0]);
-
-  const HMM_Mat4 projectionFromView =
-      HMM_Perspective_RH_ZO(HMM_PI / 4, 1.0f, 0.01f, 100.0f);
-  glUniformMatrix4fv(uProjectionFromViewLoc, 1, GL_FALSE,
-                     &projectionFromView.Elements[0][0]);
 
   const GLsizei viewportSize = 32;
   const GLsizei numViewports = 1;
@@ -292,38 +270,83 @@ void main() {
     fatal("Failed to complete offscreen framebuffer");
   }
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  //glEnable(GL_CULL_FACE);
+  // glEnable(GL_CULL_FACE);
+
+  glBindVertexArray(vao);
+  glBindBuffer(GL_ARRAY_BUFFER, vbPosition);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+  glEnableVertexAttribArray(0);
+  glBindBuffer(GL_ARRAY_BUFFER, vbNormal);
+  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+  glEnableVertexAttribArray(1);
+  glBindBuffer(GL_ARRAY_BUFFER, vbColor);
+  glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+  glEnableVertexAttribArray(2);  // color
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib);
 
   const float t0 = getTime();
+  float tP = t0;
   while (!GetAsyncKeyState(VK_ESCAPE)) {
     const float t = getTime() - t0;
-    const float dt = t - t0;
+    const float dt = t - tP;
+    tP = t;
+    std::println("dt {}", dt);
     glUniform1f(uTimeLoc, t);
 
-    HMM_Mat4 viewFromWorld = HMM_LookAt_RH(
-         HMM_V3(10 * HMM_CosF(t), 10 * HMM_SinF(t), 1),
-      HMM_V3(0, 0, 0), HMM_V3(0, 0, 1));
-    glUniformMatrix4fv(uViewFromWorldLoc, 1, GL_FALSE,
-                       &viewFromWorld.Elements[0][0]);
+    const HMM_Mat4 worldFromObject = HMM_M4D(1.f);
+    glUniformMatrix4fv(uWorldFromObjectLoc, 1, GL_FALSE,
+                       &worldFromObject.Elements[0][0]);
+
+    const HMM_Mat4 projectionFromView =
+        HMM_Perspective_RH_ZO(HMM_PI / 4.f, 1.0f, 0.01f, 100.0f);
+    glUniformMatrix4fv(uProjectionFromViewLoc, 1, GL_FALSE,
+                       &projectionFromView.Elements[0][0]);
 
     glBindFramebuffer(GL_FRAMEBUFFER, fbOffScreen);
     glViewport(0, 0, viewportSize, viewportSize);
-    glClearColor(1.f, 0.f, 0.f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    HMM_Vec3 pixels[viewportSize * viewportSize];
-    glReadPixels(0, 0, viewportSize, viewportSize, GL_RGB, GL_FLOAT, pixels);
-    static bool hasPrinted = false;
-    if (!hasPrinted) {
-      for (uint32_t i = 0; i < 2; ++i) {
-        for (uint32_t j = 0; j < 2; ++j) {
+    glClearColor(0.f, 0.f, 0.f, 1.0f);
+
+    HMM_Vec3* radiances = new HMM_Vec3[mesh.numVertices];
+    CopyMemory(radiances, mesh.colors, sizeof(HMM_Vec3) * mesh.numVertices);
+
+    for (uint32_t vertIx = 0; vertIx < mesh.numVertices; ++vertIx) {
+      const HMM_Vec3 camPos = mesh.positions[vertIx];
+      const HMM_Vec3 camTarget = camPos + mesh.normals[vertIx];
+      HMM_Mat4 viewFromWorld = HMM_LookAt_RH(camPos, camTarget, kUp);
+      glUniformMatrix4fv(uViewFromWorldLoc, 1, GL_FALSE,
+                         &viewFromWorld.Elements[0][0]);
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+      glDrawElements(GL_TRIANGLES, mesh.numIndices, GL_UNSIGNED_INT, nullptr);
+
+      HMM_Vec3 pixels[viewportSize * viewportSize];
+      glReadPixels(0, 0, viewportSize, viewportSize, GL_RGB, GL_FLOAT, pixels);
+      HMM_Vec3 totalRadiance = HMM_V3(0, 0, 0);
+      for (uint32_t i = 0; i < viewportSize; ++i) {
+        for (uint32_t j = 0; j < viewportSize; ++j) {
           const uint32_t pIx = i * viewportSize + j;
           const HMM_Vec3& px = pixels[pIx];
-          std::print("({}, {}, {})", px.X, px.Y, px.Z);
+          totalRadiance += px;
         }
-        std::print("\n");
       }
-      hasPrinted = true;
+      const HMM_Vec3 radiance = totalRadiance / (viewportSize * viewportSize);
+      radiances[vertIx] += radiance;
     }
+    glBindBuffer(GL_ARRAY_BUFFER, vbColor);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(HMM_Vec3) * mesh.numVertices, radiances);
+
+    const HMM_Mat4 worldFromObject2 = HMM_M4D(1.f);
+    glUniformMatrix4fv(uWorldFromObjectLoc, 1, GL_FALSE,
+                       &worldFromObject2.Elements[0][0]);
+
+    HMM_Mat4 viewFromWorld2 = HMM_LookAt_RH(
+        HMM_V3(10 * HMM_CosF(t), 10 * HMM_SinF(t), 1), HMM_V3(0, 0, 0), kUp);
+    glUniformMatrix4fv(uViewFromWorldLoc, 1, GL_FALSE,
+                       &viewFromWorld2.Elements[0][0]);
+
+    const HMM_Mat4 projectionFromView2 =
+        HMM_Perspective_RH_ZO(HMM_PI / 4, 1.0f, 0.01f, 100.0f);
+    glUniformMatrix4fv(uProjectionFromViewLoc, 1, GL_FALSE,
+                       &projectionFromView2.Elements[0][0]);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, winWidth, winHeight);
@@ -331,18 +354,6 @@ void main() {
     glDepthFunc(GL_LESS);
     glClearColor(0.f, 0.f, 0.f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, vbPosition);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
-    glEnableVertexAttribArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, vbNormal);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
-    glEnableVertexAttribArray(1);
-    glBindBuffer(GL_ARRAY_BUFFER, vbColor);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
-    glEnableVertexAttribArray(2);  // color
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib);
 
     glDrawElements(GL_TRIANGLES, mesh.numIndices, GL_UNSIGNED_INT, nullptr);
 
