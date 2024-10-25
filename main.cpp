@@ -127,37 +127,6 @@ int main() {
   const char* vertSrc = R"glsl(
 #version 460
 
-mat4 lookAt(vec3 eye, vec3 center, vec3 up) {
-    vec3 f = normalize(center - eye);
-    vec3 s = normalize(cross(f, up));
-    vec3 u = cross(s, f);
-    mat4 result = mat4(1.0);
-    result[0][0] = s.x;
-    result[1][0] = s.y;
-    result[2][0] = s.z;
-    result[0][1] = u.x;
-    result[1][1] = u.y;
-    result[2][1] = u.z;
-    result[0][2] = -f.x;
-    result[1][2] = -f.y;
-    result[2][2] = -f.z;
-    result[3][0] = -dot(s, eye);
-    result[3][1] = -dot(u, eye);
-    result[3][2] = dot(f, eye);
-    return result;
-}
-
-mat4 perspective(float fov, float aspect, float near, float far) {
-    float tanHalfFov = tan(fov / 2.0f);
-    mat4 result = mat4(0);
-    result[0][0] = 1.0f / (aspect * tanHalfFov);
-    result[1][1] = 1.0f / tanHalfFov;
-    result[2][2] = -(far + near) / (far - near);
-    result[2][3] = -1.0f;
-    result[3][2] = -(2.0f * far * near) / (far - near);
-    return result;
-}
-
 layout (location = 0) in vec3 aPosition;
 layout (location = 1) in vec3 aNormal;
 layout (location = 2) in vec3 aColor;
@@ -171,27 +140,15 @@ uniform mat4 uWorldFromObject = mat4(1);
 uniform mat4 uViewFromWorld = mat4(1);
 uniform mat4 uProjectionFromView = mat4(1);
 
-out vec3 worldPos;
+out vec3 vWorldPos;
 out vec3 vNormal;
 out vec3 vColor;
 
 void main() {
-    vec3 eye = vec3(2 * cos(uTime), 1, 2 * sin(uTime)); 
-    // vec3 eye = vec3(5, -5, 5);
-    // int sbIx = int(uTime) % 3;
-    // vec3 eye = camPositions[sbIx];
-    vec3 center = vec3(0, 0, 0);
-    vec3 up = vec3(0, 1, 0);
-    worldPos = vec3(uWorldFromObject * vec4(aPosition, 1));
-
-    // const mat4 model = mat4(1);
-    // const mat4 view = lookAt(eye, center, up);
-    // const mat4 projection = perspective(3.1415 / 2, 1, 0.1, 100.0);
-    // const mat4 mvp = projection * view * model;
-    // gl_Position = mvp * vec4(aPosition, 1.0);
     const mat4 MVP = uProjectionFromView * uViewFromWorld * uWorldFromObject;
     gl_Position = MVP * vec4(aPosition, 1.0);
     
+    vWorldPos = vec3(uWorldFromObject * vec4(aPosition, 1));
     vNormal = aNormal;
     vColor = aColor;
 }
@@ -201,21 +158,14 @@ void main() {
 #version 460
 in vec3 vNormal;
 in vec3 vColor;
-in vec3 worldPos;
+in vec3 vWorldPos;
 
 uniform float uTime = 0.0f;
 
-const vec3 lightPos = vec3(1, 5, 1);
-
-out vec4 fragColor;  // Output color
+out vec4 fragColor; 
 
 void main() {
-    const vec3 normal = normalize(vNormal);
-    const vec3 lightDir = normalize(lightPos - worldPos);
-    float diffuse = max(0, dot(normal, lightDir));
     fragColor = vec4(vColor, 1.0);
-    //fragColor = vec4(vec3(diffuse), 1.0);
-    //fragColor = vec4(vColor + diffuse, 1.0);
 }
 )glsl";
   const GLuint prog = compileShader(vertSrc, fragSrc);
@@ -290,7 +240,6 @@ void main() {
     const float t = getTime() - t0;
     const float dt = t - tP;
     tP = t;
-    std::println("dt {}", dt);
     glUniform1f(uTimeLoc, t);
 
     const HMM_Mat4 worldFromObject = HMM_M4D(1.f);
@@ -302,10 +251,12 @@ void main() {
     glUniformMatrix4fv(uProjectionFromViewLoc, 1, GL_FALSE,
                        &projectionFromView.Elements[0][0]);
 
+    // Loop over every vertex, render the scene from vertex position into normal direction into a small texture
+    // take average pixel of the texture and store it as the incoming radiance for that vertex
     glBindFramebuffer(GL_FRAMEBUFFER, fbOffScreen);
     glViewport(0, 0, viewportSize, viewportSize);
     glClearColor(0.f, 0.f, 0.f, 1.0f);
-
+    // copy initial light emissions
     HMM_Vec3* radiances = new HMM_Vec3[mesh.numVertices];
     CopyMemory(radiances, mesh.colors, sizeof(HMM_Vec3) * mesh.numVertices);
 
@@ -329,11 +280,13 @@ void main() {
         }
       }
       const HMM_Vec3 radiance = totalRadiance / (viewportSize * viewportSize);
+      // adding direct lighting to emissive values (will loop later for indirect lighting)
       radiances[vertIx] += radiance;
     }
     glBindBuffer(GL_ARRAY_BUFFER, vbColor);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(HMM_Vec3) * mesh.numVertices, radiances);
 
+    // Render the world from camera POV
     const HMM_Mat4 worldFromObject2 = HMM_M4D(1.f);
     glUniformMatrix4fv(uWorldFromObjectLoc, 1, GL_FALSE,
                        &worldFromObject2.Elements[0][0]);
