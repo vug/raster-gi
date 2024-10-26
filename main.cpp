@@ -76,6 +76,10 @@ Mesh readMeshFromFile(const char* fileName) {
     fatal("Failed to read position data.");
   }
 
+  for (uint32_t vertIx = 0; vertIx < mesh.numVertices; ++vertIx) {
+    mesh.colors[vertIx] *= 3; // temporarily increase intensity here, should be done in Blender
+  }
+
   return mesh;
 }
 
@@ -186,20 +190,27 @@ void main() {
   const GLsizei viewportArea = viewportSide * viewportSide;
   const GLsizei numViewports = 1;
 
-  GLuint texOffScreen{};
-  glGenTextures(1, &texOffScreen);
-  glBindTexture(GL_TEXTURE_2D, texOffScreen);
   const GLsizei texWidth = viewportSide * numViewports;
   const GLsizei texHeight = viewportSide;
+  GLuint colorTexOffScreen{};
+  glGenTextures(1, &colorTexOffScreen);
+  glBindTexture(GL_TEXTURE_2D, colorTexOffScreen);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, texWidth, texHeight, 0, GL_RGB,
                GL_FLOAT, nullptr);
-  std::println("texOffscreen: {}", texOffScreen);
+
+  GLuint depthTexOffScreen{};
+  glGenTextures(1, &depthTexOffScreen);
+  glBindTexture(GL_TEXTURE_2D, depthTexOffScreen);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, texWidth, texHeight, 0,
+               GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
 
   GLuint fbOffScreen{};
   glGenFramebuffers(1, &fbOffScreen);
   glBindFramebuffer(GL_FRAMEBUFFER, fbOffScreen);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                         texOffScreen, 0);
+                         colorTexOffScreen, 0);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
+                         depthTexOffScreen, 0);
   const GLenum fbOffScreenStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
   if (fbOffScreenStatus != GL_FRAMEBUFFER_COMPLETE) {
     if (fbOffScreenStatus == GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT)
@@ -229,15 +240,16 @@ void main() {
     const float t = getTime() - t0;
     const float dt = t - tP;
     tP = t;
-    std::println("{}", 1.f / dt);
+    std::println("dt {}, FPS {}", dt, 1.f / dt);
     glUniform1f(uTimeLoc, t);
 
     const HMM_Mat4 worldFromObject = HMM_M4D(1.f);
     glUniformMatrix4fv(uWorldFromObjectLoc, 1, GL_FALSE,
                        &worldFromObject.Elements[0][0]);
 
+    const float highFOV = HMM_PI / 1.5;  //  HMM_PI - 0.05f; // ~179 deg
     const HMM_Mat4 projectionFromView =
-        HMM_Perspective_RH_ZO(HMM_PI / 4.f, 1.0f, 0.01f, 100.0f);
+        HMM_Perspective_RH_ZO(highFOV, 1.0f, 0.01f, 100.0f);
     glUniformMatrix4fv(uProjectionFromViewLoc, 1, GL_FALSE,
                        &projectionFromView.Elements[0][0]);
 
@@ -248,14 +260,16 @@ void main() {
     glViewport(0, 0, viewportSide, viewportSide);
     glClearColor(0.f, 0.f, 0.f, 1.0f);
     // copy original light emissions from mesh data
-    HMM_Vec3* accumulatedRadiances = new HMM_Vec3[mesh.numVertices]; // total lighting from all bounces
-    HMM_Vec3* bounceRadiances = new HMM_Vec3[mesh.numVertices]; // lighting from current bounce
+    HMM_Vec3* accumulatedRadiances =
+        new HMM_Vec3[mesh.numVertices];  // total lighting from all bounces
+    HMM_Vec3* bounceRadiances =
+        new HMM_Vec3[mesh.numVertices];  // lighting from current bounce
     CopyMemory(accumulatedRadiances, mesh.colors,
                sizeof(HMM_Vec3) * mesh.numVertices);
     CopyMemory(bounceRadiances, mesh.colors,
                sizeof(HMM_Vec3) * mesh.numVertices);
 
-    const uint32_t numBounces = 2;
+    const uint32_t numBounces = 3;
     for (uint32_t bounceNo = 0; bounceNo < numBounces; bounceNo++) {
       glBindBuffer(GL_ARRAY_BUFFER, vbColor);
       glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(HMM_Vec3) * mesh.numVertices,
@@ -274,22 +288,25 @@ void main() {
         glReadPixels(0, 0, viewportSide, viewportSide, GL_RGB, GL_FLOAT,
                      pixels);
         HMM_Vec3 totalRadiance = HMM_V3(0, 0, 0);
+        const float viewportCenter = viewportSide * 0.5;
         for (uint32_t i = 0; i < viewportSide; ++i) {
           for (uint32_t j = 0; j < viewportSide; ++j) {
+            // non-physical weight to emphasize central pixels more than peripheral pixels
+            const float weight = HMM_CosF((i - viewportCenter) / viewportCenter * HMM_PI * 0.5f) *
+                HMM_CosF((j - viewportCenter) / viewportCenter * HMM_PI * 0.5f) * 2.f;
             const uint32_t pIx = i * viewportSide + j;
             const HMM_Vec3& px = pixels[pIx];
-            totalRadiance += px;
+            totalRadiance += px * weight;
           }
         }
         const HMM_Vec3 radiance = totalRadiance / viewportArea;
-        // adding direct lighting to emissive values (will loop later for
-        // indirect lighting)
         accumulatedRadiances[vertIx] += radiance;
         bounceRadiances[vertIx] = radiance;
       }
     }
     glBindBuffer(GL_ARRAY_BUFFER, vbColor);
-    // TODO(vug): option to choose among accumulatedRadiances (result) and bounceRadiances (bounce contribution)
+    // TODO(vug): option to choose among accumulatedRadiances (result) and
+    // bounceRadiances (bounce contribution)
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(HMM_Vec3) * mesh.numVertices,
                     accumulatedRadiances);
 
@@ -299,12 +316,12 @@ void main() {
                        &worldFromObject2.Elements[0][0]);
 
     HMM_Mat4 viewFromWorld2 = HMM_LookAt_RH(
-        HMM_V3(10 * HMM_CosF(t), 10 * HMM_SinF(t), 1), HMM_V3(0, 0, 0), kUp);
+        HMM_V3(10 * HMM_CosF(t * 0.5f), 10 * HMM_SinF(t * 0.5f), 5), HMM_V3(0, 0, 0), kUp);
     glUniformMatrix4fv(uViewFromWorldLoc, 1, GL_FALSE,
                        &viewFromWorld2.Elements[0][0]);
 
     const HMM_Mat4 projectionFromView2 =
-        HMM_Perspective_RH_ZO(HMM_PI / 4, 1.0f, 0.01f, 100.0f);
+        HMM_Perspective_RH_ZO(HMM_PI / 4, static_cast<float>(winWidth) / winHeight, 0.01f, 100.0f);
     glUniformMatrix4fv(uProjectionFromViewLoc, 1, GL_FALSE,
                        &projectionFromView2.Elements[0][0]);
 
