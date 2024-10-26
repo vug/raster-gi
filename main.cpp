@@ -77,7 +77,7 @@ Mesh readMeshFromFile(const char* fileName) {
   }
 
   for (uint32_t vertIx = 0; vertIx < mesh.numVertices; ++vertIx) {
-    mesh.colors[vertIx] *= 3; // temporarily increase intensity here, should be done in Blender
+    mesh.colors[vertIx] *= 4; // temporarily increase intensity here, should be done in Blender
   }
 
   return mesh;
@@ -86,8 +86,8 @@ Mesh readMeshFromFile(const char* fileName) {
 int main() {
   loadWglCreateContextAttribsARB();
   HDC dev;
-  const uint32_t winWidth = 1024;
-  const uint32_t winHeight = 1024;
+  const uint32_t winWidth = 1920;
+  const uint32_t winHeight = 1080;
   createAndShowWindow("RasterGI", winWidth, winHeight, dev);
   setPixelFormatFancy(dev);
   createAndMakeOpenGlContext(dev);
@@ -314,14 +314,14 @@ void main() {
     const HMM_Mat4 worldFromObject2 = HMM_M4D(1.f);
     glUniformMatrix4fv(uWorldFromObjectLoc, 1, GL_FALSE,
                        &worldFromObject2.Elements[0][0]);
-
+    //t = 19;
     HMM_Mat4 viewFromWorld2 = HMM_LookAt_RH(
-        HMM_V3(10 * HMM_CosF(t * 0.5f), 10 * HMM_SinF(t * 0.5f), 5), HMM_V3(0, 0, 0), kUp);
+        HMM_V3(2.f * HMM_CosF(t * 0.5f), 2.f * HMM_SinF(t * 0.5f), 4), HMM_V3(0, 0, 0), kUp);
     glUniformMatrix4fv(uViewFromWorldLoc, 1, GL_FALSE,
                        &viewFromWorld2.Elements[0][0]);
 
     const HMM_Mat4 projectionFromView2 =
-        HMM_Perspective_RH_ZO(HMM_PI / 4, static_cast<float>(winWidth) / winHeight, 0.01f, 100.0f);
+        HMM_Perspective_RH_ZO(HMM_PI / 3, static_cast<float>(winWidth) / winHeight, 0.01f, 100.0f);
     glUniformMatrix4fv(uProjectionFromViewLoc, 1, GL_FALSE,
                        &projectionFromView2.Elements[0][0]);
 
