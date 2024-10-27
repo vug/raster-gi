@@ -77,7 +77,8 @@ Mesh readMeshFromFile(const char* fileName) {
   }
 
   for (uint32_t vertIx = 0; vertIx < mesh.numVertices; ++vertIx) {
-    mesh.colors[vertIx] *= 4; // temporarily increase intensity here, should be done in Blender
+    mesh.colors[vertIx] *=
+        4;  // temporarily increase intensity here, should be done in Blender
   }
 
   return mesh;
@@ -188,10 +189,13 @@ void main() {
 
   const GLsizei viewportSide = 32;
   const GLsizei viewportArea = viewportSide * viewportSide;
-  const GLsizei numViewports = 1;
+  const GLsizei numViewports = 256;
 
   const GLsizei texWidth = viewportSide * numViewports;
   const GLsizei texHeight = viewportSide;
+  // moving texture data out of stack because surpassed memory limit :-O
+  HMM_Vec3* pixels = new HMM_Vec3[texWidth * texHeight];
+
   GLuint colorTexOffScreen{};
   glGenTextures(1, &colorTexOffScreen);
   glBindTexture(GL_TEXTURE_2D, colorTexOffScreen);
@@ -234,6 +238,7 @@ void main() {
   glEnableVertexAttribArray(2);  // color
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib);
 
+  glEnable(GL_SCISSOR_TEST);
   const float t0 = getTime();
   float tP = t0;
   while (!GetAsyncKeyState(VK_ESCAPE)) {
@@ -247,7 +252,7 @@ void main() {
     glUniformMatrix4fv(uWorldFromObjectLoc, 1, GL_FALSE,
                        &worldFromObject.Elements[0][0]);
 
-    const float highFOV = HMM_PI / 1.5;  //  HMM_PI - 0.05f; // ~179 deg
+    const float highFOV = HMM_PI / 1.25;  //  HMM_PI - 0.05f; // ~179 deg
     const HMM_Mat4 projectionFromView =
         HMM_Perspective_RH_ZO(highFOV, 1.0f, 0.01f, 100.0f);
     glUniformMatrix4fv(uProjectionFromViewLoc, 1, GL_FALSE,
@@ -257,7 +262,6 @@ void main() {
     // direction into a small texture take average pixel of the texture and
     // store it as the incoming radiance for that vertex
     glBindFramebuffer(GL_FRAMEBUFFER, fbOffScreen);
-    glViewport(0, 0, viewportSide, viewportSide);
     glClearColor(0.f, 0.f, 0.f, 1.0f);
     // copy original light emissions from mesh data
     HMM_Vec3* accumulatedRadiances =
@@ -275,33 +279,53 @@ void main() {
       glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(HMM_Vec3) * mesh.numVertices,
                       bounceRadiances);
 
-      for (uint32_t vertIx = 0; vertIx < mesh.numVertices; ++vertIx) {
-        const HMM_Vec3 camPos = mesh.positions[vertIx];
-        const HMM_Vec3 camTarget = camPos + mesh.normals[vertIx];
-        HMM_Mat4 viewFromWorld = HMM_LookAt_RH(camPos, camTarget, kUp);
-        glUniformMatrix4fv(uViewFromWorldLoc, 1, GL_FALSE,
-                           &viewFromWorld.Elements[0][0]);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glDrawElements(GL_TRIANGLES, mesh.numIndices, GL_UNSIGNED_INT, nullptr);
-
-        HMM_Vec3 pixels[viewportArea];
-        glReadPixels(0, 0, viewportSide, viewportSide, GL_RGB, GL_FLOAT,
-                     pixels);
-        HMM_Vec3 totalRadiance = HMM_V3(0, 0, 0);
-        const float viewportCenter = viewportSide * 0.5;
-        for (uint32_t i = 0; i < viewportSide; ++i) {
-          for (uint32_t j = 0; j < viewportSide; ++j) {
-            // non-physical weight to emphasize central pixels more than peripheral pixels
-            const float weight = HMM_CosF((i - viewportCenter) / viewportCenter * HMM_PI * 0.5f) *
-                HMM_CosF((j - viewportCenter) / viewportCenter * HMM_PI * 0.5f) * 2.f;
-            const uint32_t pIx = i * viewportSide + j;
-            const HMM_Vec3& px = pixels[pIx];
-            totalRadiance += px * weight;
+      uint32_t numDownloads =
+          std::ceil(static_cast<float>(mesh.numVertices) / numViewports);
+      for (uint32_t d = 0; d < numDownloads; ++d) {
+        for (uint32_t v = 0; v < numViewports; ++v) {
+          glViewport(v * viewportSide, 0, viewportSide, viewportSide);
+          glScissor(v * viewportSide, 0, viewportSide, viewportSide);
+          const uint32_t vertIx = d * numViewports + v;
+          if (vertIx >= mesh.numVertices) {
+            break;
           }
+          const HMM_Vec3 camPos = mesh.positions[vertIx];
+          const HMM_Vec3 camTarget = camPos + mesh.normals[vertIx];
+          HMM_Mat4 viewFromWorld = HMM_LookAt_RH(camPos, camTarget, kUp);
+          glUniformMatrix4fv(uViewFromWorldLoc, 1, GL_FALSE,
+                             &viewFromWorld.Elements[0][0]);
+          glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+          glDrawElements(GL_TRIANGLES, mesh.numIndices, GL_UNSIGNED_INT,
+                         nullptr);
         }
-        const HMM_Vec3 radiance = totalRadiance / viewportArea;
-        accumulatedRadiances[vertIx] += radiance;
-        bounceRadiances[vertIx] = radiance;
+
+        glReadPixels(0, 0, texWidth, texHeight, GL_RGB, GL_FLOAT, pixels);
+        for (uint32_t v = 0; v < numViewports; ++v) {
+          const uint32_t vertIx = d * numViewports + v;
+          if (vertIx >= mesh.numVertices) {
+            break;
+          }
+          HMM_Vec3 totalRadiance = HMM_V3(0, 0, 0);
+          // const float viewportCenter = viewportSide * 0.5;
+          for (uint32_t i = 0; i < viewportSide; ++i) {
+            for (uint32_t j = v * viewportSide; j < (v + 1) * viewportSide;
+                 ++j) {
+              // non-physical weight to emphasize central pixels more than
+              // peripheral pixels
+              // const float weight = HMM_CosF((i - viewportCenter) /
+              //                              viewportCenter * HMM_PI * 0.5f) *
+              //                     HMM_CosF((j - viewportCenter) /
+              //                              viewportCenter * HMM_PI * 0.5f) *
+              //                     2.f;
+              const uint32_t pIx = i * texWidth + j;
+              const HMM_Vec3& px = pixels[pIx];
+              totalRadiance += px;  // * weight;
+            }
+          }
+          const HMM_Vec3 radiance = totalRadiance / viewportArea;
+          accumulatedRadiances[vertIx] += radiance;
+          bounceRadiances[vertIx] = radiance;
+        }
       }
     }
     glBindBuffer(GL_ARRAY_BUFFER, vbColor);
@@ -314,19 +338,21 @@ void main() {
     const HMM_Mat4 worldFromObject2 = HMM_M4D(1.f);
     glUniformMatrix4fv(uWorldFromObjectLoc, 1, GL_FALSE,
                        &worldFromObject2.Elements[0][0]);
-    //t = 19;
+    // t = 19;
     HMM_Mat4 viewFromWorld2 = HMM_LookAt_RH(
-        HMM_V3(2.f * HMM_CosF(t * 0.5f), 2.f * HMM_SinF(t * 0.5f), 4), HMM_V3(0, 0, 0), kUp);
+        HMM_V3(2.f * HMM_CosF(t * 0.5f), 2.f * HMM_SinF(t * 0.5f), 4),
+        HMM_V3(0, 0, 0), kUp);
     glUniformMatrix4fv(uViewFromWorldLoc, 1, GL_FALSE,
                        &viewFromWorld2.Elements[0][0]);
 
-    const HMM_Mat4 projectionFromView2 =
-        HMM_Perspective_RH_ZO(HMM_PI / 3, static_cast<float>(winWidth) / winHeight, 0.01f, 100.0f);
+    const HMM_Mat4 projectionFromView2 = HMM_Perspective_RH_ZO(
+        HMM_PI / 3, static_cast<float>(winWidth) / winHeight, 0.01f, 100.0f);
     glUniformMatrix4fv(uProjectionFromViewLoc, 1, GL_FALSE,
                        &projectionFromView2.Elements[0][0]);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, winWidth, winHeight);
+    glScissor(0, 0, winWidth, winHeight);
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
     glClearColor(0.f, 0.f, 0.f, 1.0f);
