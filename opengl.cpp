@@ -131,6 +131,7 @@ DEFINE_FUNC_PTR_TYPE(glViewport);
 DEFINE_FUNC_PTR_TYPE(glReadPixels);
 DEFINE_FUNC_PTR_TYPE(glCheckFramebufferStatus);
 DEFINE_FUNC_PTR_TYPE(glBufferSubData);
+DEFINE_FUNC_PTR_TYPE(glScissor);
 
 void *GetAnyGLFuncAddress(const char *name) {
   void *p = (void *)wglGetProcAddress(name);
@@ -186,6 +187,7 @@ void initGlFunctions() {
   GET_PROC_ADDRESS(glReadPixels);
   GET_PROC_ADDRESS(glCheckFramebufferStatus);
   GET_PROC_ADDRESS(glBufferSubData);
+  GET_PROC_ADDRESS(glScissor);
 }
 
 void loadWglCreateContextAttribsARB() {
