@@ -101,7 +101,7 @@ int main() {
   char path[MAX_PATH];
   GetCurrentDirectoryA(MAX_PATH, path);
   strcat_s(path, "\\assets\\");
-  strcat_s(path, "spiky.mesh");
+  strcat_s(path, "trees.mesh");
   Mesh mesh = readMeshFromFile(path);
   std::println("numVertices {}, numIndices {}", mesh.numVertices,
                mesh.numIndices);
@@ -245,7 +245,7 @@ void main() {
     const float t = getTime() - t0;
     const float dt = t - tP;
     tP = t;
-    std::println("dt {}, FPS {}", dt, 1.f / dt);
+    //std::println("dt {}, FPS {}", dt, 1.f / dt);
     glUniform1f(uTimeLoc, t);
 
     const HMM_Mat4 worldFromObject = HMM_M4D(1.f);
@@ -268,10 +268,17 @@ void main() {
         new HMM_Vec3[mesh.numVertices];  // total lighting from all bounces
     HMM_Vec3* bounceRadiances =
         new HMM_Vec3[mesh.numVertices];  // lighting from current bounce
-    CopyMemory(accumulatedRadiances, mesh.colors,
-               sizeof(HMM_Vec3) * mesh.numVertices);
-    CopyMemory(bounceRadiances, mesh.colors,
-               sizeof(HMM_Vec3) * mesh.numVertices);
+    // Custom lighting pattern
+    //CopyMemory(accumulatedRadiances, mesh.colors, sizeof(HMM_Vec3) * mesh.numVertices);
+    //CopyMemory(bounceRadiances, mesh.colors, sizeof(HMM_Vec3) * mesh.numVertices);
+    for (uint32_t vertIx = 0; vertIx < mesh.numVertices; ++vertIx) {
+      //const bool illumVert = static_cast<uint32_t>(t) * 100 < vertIx &&
+      //                       vertIx < (static_cast<uint32_t>(t) + 1) * 100;
+      const bool illumVert = HMM_MOD(static_cast<uint32_t>(2 * t * 100), mesh.numVertices) < vertIx &&
+                             vertIx < HMM_MOD(static_cast<uint32_t>((2 * t + 1) * 100), mesh.numVertices);
+      accumulatedRadiances[vertIx] = illumVert ? HMM_V3(HMM_SinF(t),HMM_CosF(t),1) : HMM_V3(0,0,0);
+      bounceRadiances[vertIx] = accumulatedRadiances[vertIx];
+    }
 
     const uint32_t numBounces = 3;
     for (uint32_t bounceNo = 0; bounceNo < numBounces; bounceNo++) {
@@ -340,13 +347,13 @@ void main() {
                        &worldFromObject2.Elements[0][0]);
     // t = 19;
     HMM_Mat4 viewFromWorld2 = HMM_LookAt_RH(
-        HMM_V3(2.f * HMM_CosF(t * 0.5f), 2.f * HMM_SinF(t * 0.5f), 4),
+        HMM_V3(20.f * HMM_CosF(t * 0.5f), 20.f * HMM_SinF(t * 0.5f), 10),
         HMM_V3(0, 0, 0), kUp);
     glUniformMatrix4fv(uViewFromWorldLoc, 1, GL_FALSE,
                        &viewFromWorld2.Elements[0][0]);
 
     const HMM_Mat4 projectionFromView2 = HMM_Perspective_RH_ZO(
-        HMM_PI / 3, static_cast<float>(winWidth) / winHeight, 0.01f, 100.0f);
+        HMM_PI / 2, static_cast<float>(winWidth) / winHeight, 0.01f, 100.0f);
     glUniformMatrix4fv(uProjectionFromViewLoc, 1, GL_FALSE,
                        &projectionFromView2.Elements[0][0]);
 
